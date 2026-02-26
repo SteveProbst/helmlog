@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#0b1d33;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>True North Sailing — HelmLog</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<style>
+
+  :root {
+    --tn-navy: #0b1d33;
+    --tn-dark: #0e2440;
+    --tn-blue: #14345a;
+    --tn-steel: #1e4d7a;
+    --tn-ocean: #2277aa;
+    --tn-sky: #3ba3d0;
+    --tn-light: #7fc8e8;
+    --tn-pale: #c5e4f3;
+    --tn-white: #f0f7fb;
+    --tn-gold: #d4a843;
+    --tn-gold-light: #ecc668;
+    --tn-red: #c44b4b;
+    --tn-green: #3aaa7a;
+    --tn-warm: #e89555;
+    --radius: 10px;
+    --tn-card: rgba(14,36,64,0.7);
+    --shadow: 0 4px 20px rgba(0,0,0,0.35);
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Source Sans 3', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #0b1d33; }
+  body {
+    font-family: var(--font-body, 'Source Sans 3', -apple-system, sans-serif);
+    background: var(--tn-navy, #0b1d33);
+    color: var(--tn-white, #f0f7fb);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, var(--tn-dark, #0e2440) 0%, var(--tn-blue, #14345a) 100%);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--tn-gold, #d4a843);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-compass {
+    width: 38px; height: 38px;
+    border: 2px solid var(--tn-gold, #d4a843);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle, var(--tn-blue, #14345a), var(--tn-dark, #0e2440));
+    position: relative;
+    overflow: hidden;
+  }
+  .header-compass img {
+    width: 32px; height: 32px;
+    object-fit: contain;
+    filter: brightness(1.2);
+  }
+  .header-rose {
+    width: 38px; height: 38px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .header-rose svg { width: 100%; height: 100%; }
+  .header-rose .cr {
+    position: absolute;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 7px;
+    font-weight: 700;
+    color: var(--tn-gold, #d4a843);
+  }
+  .header-rose .cr.n { top: 0; left: 50%; transform: translateX(-50%); color: var(--tn-red, #c44b4b); }
+  .header-rose .cr.s { bottom: 0; left: 50%; transform: translateX(-50%); }
+  .header-rose .cr.e { right: 0; top: 50%; transform: translateY(-50%); }
+  .header-rose .cr.w { left: 0; top: 50%; transform: translateY(-50%); }
+  .header-text h1 {
+    font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+    font-size: 17px;
+    color: var(--tn-white, #f0f7fb);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .header-text h1 em {
+    font-style: normal;
+    color: var(--tn-gold, #d4a843);
+  }
+  .header-text .sub {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--tn-gold, #d4a843);
+    font-weight: 600;
+  }
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--tn-pale, #c5e4f3);
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--tn-steel, #1e4d7a);
+    transition: background 0.3s;
+  }
+  .status-dot.active {
+    background: var(--tn-green, #3aaa7a);
+    box-shadow: 0 0 8px var(--tn-green, #3aaa7a);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--tn-dark, #0e2440);
+    border-bottom: 1px solid var(--tn-steel, #1e4d7a);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  .tab {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 2px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--tn-pale, #c5e4f3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+    background: none;
+    border-top: none; border-left: none; border-right: none;
+    font-family: var(--font-body, 'Source Sans 3', -apple-system, sans-serif);
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+  }
+  .tab:hover { color: var(--tn-sky, #3ba3d0); }
+  .tab.active {
+    color: var(--tn-gold, #d4a843);
+    border-bottom-color: var(--tn-gold, #d4a843);
+    background: rgba(212,168,67,0.06);
+  }
+  .tab-icon { font-size: 14px; display: block; margin-bottom: 0; line-height: 1; }
+
+  /* ── Panels ── */
+  .panel { display: none; padding: 14px; max-width: 700px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: linear-gradient(145deg, var(--tn-dark, #0e2440), var(--tn-blue, #14345a));
+    border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: var(--radius, 10px);
+    padding: 14px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--tn-gold, #d4a843), transparent);
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--tn-gold, #d4a843);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  /* ── Live Grid ── */
+  .live-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .live-card {
+    background: linear-gradient(145deg, var(--tn-dark, #0e2440), var(--tn-blue, #14345a));
+    border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: var(--radius, 10px);
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .live-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--tn-gold, #d4a843), transparent);
+  }
+  .live-card.full { grid-column: 1 / -1; }
+  .lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--tn-gold, #d4a843);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .val {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--tn-white, #f0f7fb);
+  }
+  .val small { font-size: 11px; color: var(--tn-pale, #c5e4f3); font-weight: 400; }
+
+  /* ── Wind Compass ── */
+  .wind-wrap { display: flex; align-items: center; gap: 14px; }
+  .compass {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 2px solid var(--tn-steel, #1e4d7a);
+    background: var(--tn-navy, #0b1d33);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .compass .c {
+    position: absolute;
+    font-size: 8px; font-weight: 600;
+    color: var(--tn-pale, #c5e4f3);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  }
+  .compass .c.n { top: 3px; left: 50%; transform: translateX(-50%); color: var(--tn-red, #c44b4b); }
+  .compass .c.s { bottom: 3px; left: 50%; transform: translateX(-50%); }
+  .compass .c.e { right: 4px; top: 50%; transform: translateY(-50%); }
+  .compass .c.w { left: 4px; top: 50%; transform: translateY(-50%); }
+  .arrow {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 2px; height: 22px;
+    background: var(--tn-gold, #d4a843);
+    transform-origin: bottom center;
+    transform: translate(-50%, -100%) rotate(0deg);
+    transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+    border-radius: 1px;
+  }
+  .arrow::before {
+    content: '';
+    position: absolute;
+    top: -3px; left: -4px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 8px solid var(--tn-gold, #d4a843);
+  }
+  .compass-dot {
+    position: absolute; top: 50%; left: 50%;
+    width: 6px; height: 6px;
+    background: var(--tn-sky, #3ba3d0);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .override-row {
+    display:flex; gap:10px; margin-top:10px; padding-top:10px;
+    border-top:1px solid var(--tn-steel, #1e4d7a);
+  }
+  .override-row .input-group { flex:1; }
+  .override-row label { font-size:10px; color:var(--tn-pale, #c5e4f3); margin-bottom:3px; display:block; }
+  .override-row select, .override-row input {
+    width:100%; padding:6px 8px; border-radius:6px; font-size:12px;
+    border:1px solid var(--tn-steel, #1e4d7a);
+    background:var(--tn-navy, #0b1d33); color:var(--tn-white, #f0f7fb);
+    font-family:var(--font-mono, 'JetBrains Mono', monospace);
+  }
+
+  /* ── Weather Extras ── */
+  .wx-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .wx-item {
+    background: rgba(11,29,51,0.6);
+    border: 1px solid rgba(30,77,122,0.5);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+  }
+  .wx-icon { font-size: 16px; margin-bottom: 2px; }
+  .wx-v { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 13px; font-weight: 500; color: var(--tn-white, #f0f7fb); }
+  .wx-l { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: var(--tn-pale, #c5e4f3); margin-top: 1px; }
+  .wx-status { font-size: 10px; color: var(--tn-steel, #1e4d7a); text-align: center; margin-top: 6px; font-family: var(--font-mono, 'JetBrains Mono', monospace); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 14px 20px; border: none; border-radius: var(--radius, 10px);
+    font-family: var(--font-body, 'Source Sans 3', -apple-system, sans-serif); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; width: 100%;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-gold { background: linear-gradient(135deg, var(--tn-gold, #d4a843), #b8912e); color: var(--tn-navy, #0b1d33); box-shadow: 0 4px 16px rgba(212,168,67,0.3); }
+  .btn-ocean { background: linear-gradient(135deg, var(--tn-ocean, #2277aa), var(--tn-steel, #1e4d7a)); color: var(--tn-white, #f0f7fb); box-shadow: 0 4px 12px rgba(34,119,170,0.25); }
+  .btn-red { background: linear-gradient(135deg, var(--tn-red, #c44b4b), #993333); color: var(--tn-white, #f0f7fb); }
+  .btn-outline { background: transparent; border: 1px solid var(--tn-steel, #1e4d7a); color: var(--tn-pale, #c5e4f3); }
+  .btn-outline:hover { border-color: var(--tn-gold, #d4a843); color: var(--tn-gold, #d4a843); }
+  .btn-sm { padding: 10px 14px; font-size: 12px; }
+  .btn-group { display: flex; gap: 10px; margin-top: 12px; }
+
+  /* ── Section Box ── */
+  .sbox {
+    background: var(--tn-dark, #0e2440);
+    border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: var(--radius, 10px);
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .sbox h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--tn-gold, #d4a843);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .input-group { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .input-group label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--tn-pale, #c5e4f3); }
+  .input-group input, .input-group select, .input-group textarea {
+    background: var(--tn-navy, #0b1d33); border: 1px solid var(--tn-steel, #1e4d7a); border-radius: 6px;
+    padding: 10px; color: var(--tn-white, #f0f7fb); font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: var(--tn-gold, #d4a843); }
+  .input-group textarea { font-family: var(--font-body, 'Source Sans 3', -apple-system, sans-serif); font-size: 13px; resize: vertical; min-height: 60px; }
+  .input-group select { appearance: none; padding-right: 30px; }
+
+  /* ── Toggle Switch ── */
+  .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; }
+  .toggle-switch input { opacity:0; width:0; height:0; }
+  .toggle-slider {
+    position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
+    background:#1e4d7a; background:var(--tn-steel, #1e4d7a);
+    border-radius:24px; transition:0.3s;
+  }
+  .toggle-slider::before {
+    content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px;
+    background:#c5e4f3; background:var(--tn-pale, #c5e4f3);
+    border-radius:50%; transition:0.3s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background:#3aaa7a; background:var(--tn-green, #3aaa7a); }
+  .toggle-switch input:checked + .toggle-slider::before { transform:translateX(20px); }
+  .interval-sel.disabled { opacity:0.35; pointer-events:none; }
+
+  /* ── Interval ── */
+  .interval-sel { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ibtn {
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--tn-steel, #1e4d7a);
+    background: var(--tn-navy, #0b1d33); color: var(--tn-pale, #c5e4f3); font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px; cursor: pointer; transition: all 0.2s;
+  }
+  .ibtn.active { border-color: var(--tn-gold, #d4a843); background: rgba(212,168,67,0.12); color: var(--tn-gold, #d4a843); }
+
+  /* ── Log ── */
+  .log-list { display: flex; flex-direction: column; gap: 8px; }
+  .log-entry {
+    background: var(--tn-dark, #0e2440); border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: var(--radius, 10px); padding: 12px 14px; transition: all 0.2s;
+  }
+  .log-entry.waypoint { border-left: 3px solid var(--tn-gold, #d4a843); }
+  .le-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .le-time { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 12px; color: var(--tn-sky, #3ba3d0); }
+  .le-badge { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .badge-wp { background: rgba(212,168,67,0.2); color: var(--tn-gold, #d4a843); }
+  .badge-auto { background: rgba(59,163,208,0.2); color: var(--tn-sky, #3ba3d0); }
+  .le-coords { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 11px; color: var(--tn-pale, #c5e4f3); margin-bottom: 3px; }
+  .le-wx { font-size: 12px; color: var(--tn-pale, #c5e4f3); display: flex; gap: 10px; flex-wrap: wrap; }
+  .le-note { margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(30,77,122,0.4); font-size: 12px; color: var(--tn-light, #7fc8e8); font-style: italic; }
+  .empty { text-align: center; padding: 40px 20px; color: var(--tn-steel, #1e4d7a); }
+  .empty .eicon { font-size: 40px; margin-bottom: 10px; }
+
+  /* ── Map ── */
+  #map {
+    width: 100%; height: calc(100vh - 200px); min-height: 400px;
+    border-radius: var(--radius, 10px); border: 1px solid var(--tn-steel, #1e4d7a); overflow: hidden;
+  }
+  .map-ctrls { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
+  /* ── Data ── */
+  .fname-input {
+    width:100%; padding:8px 10px; border-radius:8px;
+    border:1px solid var(--tn-steel, #1e4d7a);
+    background:var(--tn-navy, #0b1d33); color:var(--tn-white, #f0f7fb);
+    font-family:var(--font-mono, 'JetBrains Mono', monospace); font-size:12px;
+  }
+  .fname-input:focus { outline:none; border-color:var(--tn-gold, #d4a843); }
+  .dsec { background: var(--tn-dark, #0e2440); border: 1px solid var(--tn-steel, #1e4d7a); border-radius: var(--radius, 10px); padding: 16px; margin-bottom: 12px; }
+  .dsec h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--tn-gold, #d4a843); margin-bottom: 10px; font-weight: 600; }
+  .tstats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .tstat { text-align: center; }
+  .tstat-v { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 18px; font-weight: 600; color: var(--tn-light, #7fc8e8); }
+  .tstat-l { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--tn-pale, #c5e4f3); margin-top: 2px; }
+  .filewrap { position: relative; }
+  .filewrap input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+
+  /* ── Learn Tab ── */
+  .ref-section {
+    background: var(--tn-dark, #0e2440);
+    border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: var(--radius, 10px);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .ref-header {
+    padding: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--tn-gold, #d4a843);
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+  .ref-header:hover { background: rgba(212,168,67,0.06); }
+  .ref-header .arrow-toggle { transition: transform 0.3s; font-size: 12px; }
+  .ref-header .arrow-toggle.open { transform: rotate(180deg); }
+  .ref-body {
+    display: none;
+    padding: 0 14px 14px;
+    font-size: 13px;
+    color: var(--tn-pale, #c5e4f3);
+    line-height: 1.7;
+  }
+  .ref-body.open { display: block; }
+  .ref-body h4 { color: var(--tn-light, #7fc8e8); margin: 10px 0 6px; font-size: 13px; }
+  .ref-body table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  .ref-body td, .ref-body th {
+    padding: 8px 10px; border: 1px solid var(--tn-steel, #1e4d7a);
+    font-size: 12px; text-align: left;
+  }
+  .ref-body th { background: var(--tn-blue, #14345a); color: var(--tn-gold, #d4a843); font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+  .knot-diagram {
+    display: inline-block;
+    background: var(--tn-navy, #0b1d33);
+    border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 4px;
+    font-size: 12px;
+    color: var(--tn-light, #7fc8e8);
+  }
+
+  /* ── Courses Tab ── */
+  .course-card {
+    background: var(--tn-dark, #0e2440);
+    border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: var(--radius, 10px);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .course-banner {
+    padding: 18px 16px;
+    background: linear-gradient(135deg, var(--tn-blue, #14345a), var(--tn-steel, #1e4d7a));
+    border-bottom: 2px solid var(--tn-gold, #d4a843);
+  }
+  .course-asa {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--tn-gold, #d4a843);
+    margin-bottom: 4px;
+  }
+  .course-name {
+    font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+    font-size: 20px;
+    color: var(--tn-white, #f0f7fb);
+    font-weight: 700;
+  }
+  .course-body { padding: 14px 16px; }
+  .course-desc { font-size: 13px; color: var(--tn-pale, #c5e4f3); line-height: 1.6; margin-bottom: 12px; }
+  .course-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .course-detail {
+    background: rgba(11,29,51,0.6);
+    border: 1px solid rgba(30,77,122,0.4);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .cd-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--tn-gold, #d4a843); margin-bottom: 3px; font-weight: 600; }
+  .cd-value { font-size: 12px; color: var(--tn-white, #f0f7fb); }
+  .course-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .topic-tag {
+    background: rgba(212,168,67,0.1);
+    border: 1px solid rgba(212,168,67,0.25);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--tn-gold, #d4a843);
+  }
+  .course-cta {
+    display: block;
+    text-align: center;
+    padding: 14px 12px;
+    background: linear-gradient(135deg, var(--tn-gold, #d4a843), #b8912e);
+    color: var(--tn-navy, #0b1d33);
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(212,168,67,0.3);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    z-index: 10;
+  }
+  .course-cta:hover, .course-cta:active { box-shadow: 0 4px 16px rgba(212,168,67,0.4); opacity:0.92; }
+  .course-links { display:flex; gap:8px; margin-top:8px; }
+  .course-links .course-cta { flex:1; text-align:center; font-size:13px; padding:12px 8px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .course-info-btn { background:transparent !important; border:2px solid var(--tn-gold, #d4a843) !important; color:var(--tn-gold, #d4a843) !important; }
+  .course-info-btn:hover, .course-info-btn:active { background:rgba(212,168,67,0.15) !important; }
+
+  /* ── Knots Tab ── */
+  .knot-card { background:var(--tn-card, rgba(14,36,64,0.7)); border-radius:12px; margin-bottom:14px; overflow:hidden; border:1px solid rgba(212,168,67,0.15); }
+  .knot-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; }
+  .knot-header:hover { background:rgba(212,168,67,0.05); }
+  .knot-name { font-family:var(--font-display, 'Playfair Display', Georgia, serif); font-size:17px; color:var(--tn-gold, #d4a843); }
+  .knot-use { font-size:11px; color:var(--tn-pale, #c5e4f3); margin-top:2px; }
+  .knot-body { max-height:0; overflow:hidden; transition:max-height 0.4s ease; }
+  .knot-body.open { max-height:4000px; }
+  .knot-body-inner { padding:0 16px 16px; }
+  .knot-when { font-size:12px; color:var(--tn-sky, #3ba3d0); margin-bottom:12px; padding:8px 10px; background:rgba(59,163,208,0.08); border-radius:8px; border-left:3px solid var(--tn-sky, #3ba3d0); }
+  .knot-difficulty { display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px; margin-left:8px; font-weight:600; }
+  .diff-easy { background:rgba(58,170,122,0.2); color:#3aaa7a; }
+  .diff-medium { background:rgba(212,168,67,0.2); color:#d4a843; }
+  .knot-stage { position:relative; background:rgba(11,29,51,0.6); border-radius:10px; padding:6px; margin-bottom:10px; }
+  .knot-stage svg { width:100%; max-width:400px; display:block; margin:0 auto; }
+  .knot-stage .rope { fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .knot-stage .rope-stand { stroke:#7fc8e8; stroke-width:5.5; }
+  .knot-stage .rope-work { stroke:#d4a843; stroke-width:5; }
+  .knot-stage .label { font-family:monospace; font-size:9px; fill:rgba(200,220,240,0.6); }
+  .knot-stage .label-gold { fill:rgba(212,168,67,0.8); }
+  .knot-stage .obj { fill:#445; stroke:#778; stroke-width:1.5; }
+  .knot-step-text { text-align:center; padding:10px 8px; font-size:13px; color:var(--tn-pale, #c5e4f3); min-height:52px; line-height:1.5; }
+  .knot-step-text .step-label { color:var(--tn-gold, #d4a843); font-weight:700; font-family:var(--font-mono, 'JetBrains Mono', monospace); font-size:11px; display:block; margin-bottom:4px; }
+  .knot-ctrls { display:flex; gap:8px; justify-content:center; margin-bottom:10px; }
+  .knot-btn { padding:8px 18px; border-radius:6px; border:1.5px solid var(--tn-gold, #d4a843); background:transparent; color:var(--tn-gold, #d4a843); font-weight:600; font-size:12px; cursor:pointer; font-family:var(--font-body, 'Source Sans 3', -apple-system, sans-serif); transition:all 0.2s; touch-action:manipulation; -webkit-tap-highlight-color:rgba(212,168,67,0.3); min-width:70px; }
+  .knot-btn:active { background:rgba(212,168,67,0.15); }
+  .knot-btn.primary { background:linear-gradient(135deg,var(--tn-gold, #d4a843),#b8912e); color:var(--tn-navy, #0b1d33); border-color:var(--tn-gold, #d4a843); }
+  .knot-btn:disabled { opacity:0.3; }
+  .knot-progress { display:flex; justify-content:center; gap:6px; margin-bottom:8px; }
+  .knot-dot { width:8px; height:8px; border-radius:50%; background:var(--tn-steel, #1e4d7a); transition:all 0.3s; }
+  .knot-dot.active { background:var(--tn-gold, #d4a843); transform:scale(1.3); }
+  .knot-dot.done { background:var(--tn-sky, #3ba3d0); }
+  .knot-memory { margin-top:10px; padding:8px 10px; background:rgba(212,168,67,0.08); border-radius:8px; border-left:3px solid var(--tn-gold, #d4a843); font-size:12px; color:var(--tn-gold, #d4a843); font-style:italic; }
+
+  /* ── Yachts Tab ── */
+  .yacht-section { margin-bottom:18px; }
+  .yacht-section-title { font-family:var(--font-display, 'Playfair Display', Georgia, serif); font-size:17px; color:var(--tn-gold, #d4a843); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid rgba(212,168,67,0.2); }
+  .yacht-card { background:var(--tn-card, rgba(14,36,64,0.7)); border-radius:10px; padding:14px; margin-bottom:10px; border:1px solid rgba(30,77,122,0.3); }
+  .yacht-mfr { font-size:10px; text-transform:uppercase; letter-spacing:1.2px; color:var(--tn-sky, #3ba3d0); font-weight:600; margin-bottom:3px; font-family:var(--font-mono, 'JetBrains Mono', monospace); }
+  .yacht-model { font-family:var(--font-display, 'Playfair Display', Georgia, serif); font-size:16px; color:var(--tn-white, #f0f7fb); margin-bottom:6px; }
+  .yacht-specs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .yacht-spec { font-size:10px; padding:3px 8px; background:rgba(59,163,208,0.1); border:1px solid rgba(59,163,208,0.2); border-radius:12px; color:var(--tn-sky, #3ba3d0); font-family:var(--font-mono, 'JetBrains Mono', monospace); }
+  .yacht-desc { font-size:12px; color:var(--tn-pale, #c5e4f3); line-height:1.5; }
+  .yacht-type-badge { display:inline-block; font-size:9px; padding:2px 8px; border-radius:10px; font-weight:600; margin-left:6px; }
+  .badge-cat { background:rgba(58,170,122,0.2); color:#3aaa7a; }
+  .badge-mono { background:rgba(59,163,208,0.2); color:#3ba3d0; }
+  .badge-power { background:rgba(212,168,67,0.2); color:#d4a843; }
+  .yacht-mfr-info { background:var(--tn-card, rgba(14,36,64,0.7)); border-radius:10px; padding:12px 14px; margin-bottom:14px; border-left:3px solid var(--tn-gold, #d4a843); }
+  .yacht-mfr-info h4 { font-family:var(--font-display, 'Playfair Display', Georgia, serif); font-size:14px; color:var(--tn-gold, #d4a843); margin-bottom:4px; }
+  .yacht-mfr-info p { font-size:12px; color:var(--tn-pale, #c5e4f3); line-height:1.5; margin:0; }
+
+  /* ── Pre-loaded Waypoints ── */
+  .wp-list { display: flex; flex-direction: column; gap: 6px; }
+  .wp-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(11,29,51,0.5); border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .wp-item:hover { border-color: var(--tn-gold, #d4a843); }
+  .wp-info { flex: 1; }
+  .wp-name { font-size: 13px; font-weight: 600; color: var(--tn-white, #f0f7fb); }
+  .wp-pos { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 10px; color: var(--tn-pale, #c5e4f3); }
+  .wp-go { font-size: 12px; color: var(--tn-gold, #d4a843); font-weight: 600; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(11,29,51,0.9);
+    z-index: 2000; align-items: center; justify-content: center;
+    padding: 20px; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--tn-dark, #0e2440); border: 1px solid var(--tn-steel, #1e4d7a);
+    border-radius: 14px; padding: 24px; width: 100%; max-width: 420px;
+    box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,0.35)); animation: modalIn 0.3s ease;
+  }
+  @keyframes modalIn { from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)} }
+  .modal h2 { font-family: var(--font-display, 'Playfair Display', Georgia, serif); font-size: 20px; color: var(--tn-gold, #d4a843); margin-bottom: 14px; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #14345a; background: var(--tn-blue, #14345a); border: 1px solid #d4a843; border: 1px solid var(--tn-gold, #d4a843);
+    color: #f0f7fb; color: var(--tn-white, #f0f7fb); padding: 12px 20px; border-radius: 8px;
+    font-size: 13px; z-index: 3000; opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none; box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Leaflet ── */
+  .leaflet-popup-content-wrapper { background: var(--tn-dark, #0e2440) !important; color: var(--tn-white, #f0f7fb) !important; border: 1px solid var(--tn-steel, #1e4d7a) !important; border-radius: 8px !important; }
+  .leaflet-popup-tip { background: var(--tn-dark, #0e2440) !important; }
+  .leaflet-popup-content { font-family: var(--font-body, 'Source Sans 3', -apple-system, sans-serif) !important; font-size: 12px !important; }
+  .waypoint-marker { background: var(--tn-gold, #d4a843); border: 2px solid var(--tn-navy, #0b1d33); border-radius: 50%; width: 14px !important; height: 14px !important; margin-left: -7px !important; margin-top: -7px !important; box-shadow: 0 0 8px rgba(212,168,67,0.5); }
+  .auto-marker { background: var(--tn-sky, #3ba3d0); border: 2px solid var(--tn-navy, #0b1d33); border-radius: 50%; width: 10px !important; height: 10px !important; margin-left: -5px !important; margin-top: -5px !important; }
+  .preset-marker { background: var(--tn-green, #3aaa7a); border: 2px solid var(--tn-navy, #0b1d33); border-radius: 50%; width: 12px !important; height: 12px !important; margin-left: -6px !important; margin-top: -6px !important; box-shadow: 0 0 6px rgba(58,170,122,0.4); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--tn-navy, #0b1d33); }
+  ::-webkit-scrollbar-thumb { background: var(--tn-steel, #1e4d7a); border-radius: 3px; }
+
+  /* Footer */
+  .app-footer {
+    text-align: center; padding: 20px 16px;
+    font-size: 10px; color: var(--tn-steel, #1e4d7a);
+    border-top: 1px solid rgba(30,77,122,0.3);
+    margin-top: 20px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    letter-spacing: 0.5px;
+    line-height: 2;
+  }
+  .app-footer a { color: var(--tn-gold, #d4a843); text-decoration: none; -webkit-tap-highlight-color: rgba(212,168,67,0.3); }
+  .app-footer a:active { opacity: 0.7; }
+  .footer-register {
+    display: inline-block; margin-top: 8px; padding: 10px 24px;
+    background: linear-gradient(135deg, var(--tn-gold, #d4a843), #b8912e);
+    color: var(--tn-navy, #0b1d33) !important; font-weight: 700; font-size: 12px;
+    border-radius: 6px; text-decoration: none !important;
+    -webkit-tap-highlight-color: rgba(212,168,67,0.3);
+    touch-action: manipulation; letter-spacing: 0;
+  }
+  .footer-register:active { opacity: 0.85; }
+</style>
+</head>
+<body style="background:#0b1d33;color:#f0f7fb;margin:0;font-family:sans-serif;">
+
+<!-- Header -->
+<div class="header">
+  <div class="header-brand">
+    <div class="header-rose">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" fill="none" stroke="#d4a843" stroke-width="2" opacity="0.4"/>
+        <circle cx="50" cy="50" r="38" fill="none" stroke="#1e4d7a" stroke-width="1"/>
+        <!-- N arrow (gold) -->
+        <polygon points="50,12 45,50 50,44 55,50" fill="#d4a843"/>
+        <!-- S arrow (blue) -->
+        <polygon points="50,88 45,50 50,56 55,50" fill="#1e4d7a"/>
+        <!-- E arrow -->
+        <polygon points="88,50 50,45 56,50 50,55" fill="#1e4d7a"/>
+        <!-- W arrow -->
+        <polygon points="12,50 50,45 44,50 50,55" fill="#1e4d7a"/>
+        <!-- Inner diamond -->
+        <polygon points="50,30 60,50 50,70 40,50" fill="none" stroke="#d4a843" stroke-width="1" opacity="0.6"/>
+        <circle cx="50" cy="50" r="4" fill="#d4a843"/>
+      </svg>
+      <span class="cr n">N</span>
+      <span class="cr s">S</span>
+      <span class="cr e">E</span>
+      <span class="cr w">W</span>
+    </div>
+    <div class="header-text">
+      <h1><em>True North</em> Sailing</h1>
+      <div class="sub">HelmLog v2.0</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <span id="trackingLabel">Idle</span>
+    <div class="status-dot" id="statusDot"></div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('track')"><span class="tab-icon">🧭</span>Track</button>
+  <button class="tab" onclick="switchTab('log')"><span class="tab-icon">📋</span>Log</button>
+  <button class="tab" onclick="switchTab('map')"><span class="tab-icon">🗺️</span>Map</button>
+  <button class="tab" onclick="switchTab('data')"><span class="tab-icon">💾</span>Data</button>
+  <button class="tab" onclick="switchTab('learn')"><span class="tab-icon">📖</span>Learn</button>
+  <button class="tab" onclick="switchTab('courses')"><span class="tab-icon">🎓</span>Courses</button>
+  <button class="tab" onclick="switchTab('knots')"><span class="tab-icon">🪢</span>Knots</button>
+  <button class="tab" onclick="switchTab('yachts')"><span class="tab-icon">⛵</span>Yachts</button>
+</div>
+
+<!-- ═══ TRACK ═══ -->
+<div class="panel active" id="panel-track">
+  <div class="live-grid">
+    <div class="live-card full"><div class="lbl">Time</div><div class="val" id="liveTime">&mdash;</div></div>
+    <div class="live-card"><div class="lbl">Latitude</div><div class="val" id="liveLat">&mdash;</div></div>
+    <div class="live-card"><div class="lbl">Longitude</div><div class="val" id="liveLng">&mdash;</div></div>
+    <div class="live-card"><div class="lbl">Speed</div><div class="val" id="liveSpeed">&mdash; <small>kts</small></div></div>
+    <div class="live-card"><div class="lbl">Heading</div><div class="val" id="liveHeading">&mdash;&deg;</div></div>
+    <div class="live-card full">
+      <div class="lbl">Wind (Live)</div>
+      <div class="wind-wrap">
+        <div class="compass">
+          <span class="c n">N</span><span class="c s">S</span><span class="c e">E</span><span class="c w">W</span>
+          <div class="arrow" id="windArrow"></div><div class="compass-dot"></div>
+        </div>
+        <div>
+          <div class="val" id="liveWind">&mdash; <small>kts</small></div>
+          <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-top:2px" id="liveWindDir">&mdash;</div>
+          <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-top:2px" id="liveGust"></div>
+        </div>
+      </div>
+      <div class="override-row">
+        <div class="input-group"><label>Sea State</label>
+          <select id="inputSeaState">
+            <option value="">Auto</option><option value="Calm">Calm</option><option value="Smooth">Smooth</option>
+            <option value="Slight">Slight</option><option value="Moderate">Moderate</option><option value="Rough">Rough</option>
+            <option value="Very Rough">Very Rough</option><option value="High">High</option>
+          </select>
+        </div>
+        <div class="input-group"><label>Wind Override (kts)</label>
+          <input type="number" id="inputWindOverride" min="0" max="100" step="0.1" placeholder="Leave blank">
+        </div>
+      </div>
+    </div>
+    <div class="live-card full">
+      <div class="lbl">Conditions</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:28px" id="wxIcon">&mdash;</span>
+        <div class="val" id="wxDesc">Waiting for GPS...</div>
+      </div>
+      <div class="wx-grid">
+        <div class="wx-item"><div class="wx-icon">🌡</div><div class="wx-v" id="wxTemp">&mdash;</div><div class="wx-l">Temp</div></div>
+        <div class="wx-item"><div class="wx-icon">💧</div><div class="wx-v" id="wxHumid">&mdash;</div><div class="wx-l">Humidity</div></div>
+        <div class="wx-item"><div class="wx-icon">📊</div><div class="wx-v" id="wxPressure">&mdash;</div><div class="wx-l">Pressure</div></div>
+      </div>
+      <div class="wx-status" id="wxStatus">Waiting for GPS fix...</div>
+    </div>
+  </div>
+
+  <div class="sbox">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <h3 style="margin:0;">⏱ Auto-Log</h3>
+      <label class="toggle-switch">
+        <input type="checkbox" id="autoLogToggle" checked onchange="toggleAutoLog()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="interval-sel" id="intervalSel">
+      <button class="ibtn" onclick="setLogInterval(60)">1m</button>
+      <button class="ibtn" onclick="setLogInterval(300)">5m</button>
+      <button class="ibtn" onclick="setLogInterval(600)">10m</button>
+      <button class="ibtn active" onclick="setLogInterval(900)">15m</button>
+      <button class="ibtn" onclick="setLogInterval(1200)">20m</button>
+      <button class="ibtn" onclick="setLogInterval(1800)">30m</button>
+      <button class="ibtn" onclick="setLogInterval(3600)">60m</button>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+    <button class="btn btn-ocean" id="btnStartStop" onclick="toggleTracking()">▶ Start Tracking</button>
+    <button class="btn btn-gold" onclick="openWaypointModal()">📌 Add Waypoint</button>
+  </div>
+</div>
+
+<!-- ═══ LOG ═══ -->
+<div class="panel" id="panel-log">
+  <div id="logList" class="log-list">
+    <div class="empty"><div class="eicon">📋</div><p>No log entries yet.<br>Start tracking to record your sail.</p></div>
+  </div>
+</div>
+
+<!-- ═══ MAP ═══ -->
+<div class="panel" id="panel-map">
+  <div class="map-ctrls">
+    <button class="btn btn-outline btn-sm" onclick="fitMapToTrack()" style="flex:1">🔍 Fit Track</button>
+    <button class="btn btn-outline btn-sm" onclick="toggleTrackLine()" style="flex:1">〰️ Line</button>
+    <button class="btn btn-outline btn-sm" onclick="centerOnMe()" style="flex:1">📍 Me</button>
+    <button class="btn btn-outline btn-sm" onclick="showPresetWaypoints()" style="flex:1">⚓ Marks</button>
+  </div>
+  <div id="map"></div>
+</div>
+
+<!-- ═══ DATA ═══ -->
+<div class="panel" id="panel-data">
+  <div class="dsec">
+    <h3>📊 Trip Summary</h3>
+    <div class="tstats">
+      <div class="tstat"><div class="tstat-v" id="statPoints">0</div><div class="tstat-l">Points</div></div>
+      <div class="tstat"><div class="tstat-v" id="statWaypoints">0</div><div class="tstat-l">Waypoints</div></div>
+      <div class="tstat"><div class="tstat-v" id="statDistance">0</div><div class="tstat-l">NM</div></div>
+    </div>
+    <div class="tstats">
+      <div class="tstat"><div class="tstat-v" id="statDuration">0:00</div><div class="tstat-l">Duration</div></div>
+      <div class="tstat"><div class="tstat-v" id="statAvgSpeed">0</div><div class="tstat-l">Avg Kts</div></div>
+      <div class="tstat"><div class="tstat-v" id="statMaxSpeed">0</div><div class="tstat-l">Max Kts</div></div>
+    </div>
+  </div>
+  <div class="dsec">
+    <h3>💾 Save / Load</h3>
+    <div class="input-group" style="margin-bottom:10px;">
+      <label style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-bottom:4px;display:block;">Filename</label>
+      <input type="text" id="saveFilename" class="fname-input" placeholder="helmlog_2026-01-15_1430">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-ocean btn-sm" onclick="saveToJSON()">⬇ Download JSON</button>
+      <div class="filewrap"><button class="btn btn-outline btn-sm">⬆ Load JSON</button><input type="file" accept=".json" onchange="loadFromJSON(event)"></div>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">📄 Export CSV</button>
+    </div>
+  </div>
+  <div class="dsec"><h3>🗑 Manage</h3><button class="btn btn-red btn-sm" onclick="clearAllData()">Clear All Data</button></div>
+</div>
+
+<!-- ═══ LEARN ═══ -->
+<div class="panel" id="panel-learn">
+  <div style="text-align:center;margin-bottom:16px;">
+    <div style="font-family:var(--font-display, 'Playfair Display', Georgia, serif);font-size:22px;color:var(--tn-gold, #d4a843)">Sailor's Reference</div>
+    <div style="font-size:12px;color:var(--tn-pale, #c5e4f3)">True North Sailing School</div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">⛵ Points of Sail <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Point</th><th>Angle to Wind</th><th>Description</th></tr>
+        <tr><td>In Irons</td><td>0°</td><td>Head to wind, sails luffing, no forward motion</td></tr>
+        <tr><td>Close Hauled</td><td>~45°</td><td>Sailing as close to the wind as possible</td></tr>
+        <tr><td>Close Reach</td><td>~60°</td><td>Between close hauled and beam reach</td></tr>
+        <tr><td>Beam Reach</td><td>~90°</td><td>Wind perpendicular to the boat, often fastest</td></tr>
+        <tr><td>Broad Reach</td><td>~135°</td><td>Wind coming from behind at an angle</td></tr>
+        <tr><td>Running</td><td>~180°</td><td>Wind directly behind, sails out wide</td></tr>
+      </table>
+      <h4>Key Terms</h4>
+      <p><strong>Windward</strong> &mdash; toward the wind. <strong>Leeward</strong> &mdash; away from the wind. <strong>Tacking</strong> &mdash; turning the bow through the wind. <strong>Jibing</strong> &mdash; turning the stern through the wind.</p>
+    </div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">🪢 Essential Knots <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Knot</th><th>Use</th></tr>
+        <tr><td>Bowline</td><td>Creates a fixed loop that won't slip. "King of knots." Used for sheets to clew, dock lines</td></tr>
+        <tr><td>Cleat Hitch</td><td>Securing a line to a cleat on dock or boat</td></tr>
+        <tr><td>Figure 8</td><td>Stopper knot to prevent line from running through a block</td></tr>
+        <tr><td>Round Turn & 2 Half Hitches</td><td>Securing to a ring, post, or rail</td></tr>
+        <tr><td>Clove Hitch</td><td>Quick temporary attachment to a post or rail</td></tr>
+        <tr><td>Reef Knot (Square)</td><td>Joining two lines of equal size, reefing sails</td></tr>
+        <tr><td>Sheet Bend</td><td>Joining two lines of different diameter</td></tr>
+      </table>
+      <h4>Bowline Memory Aid</h4>
+      <p>"The rabbit comes out of the hole, goes around the tree, and goes back down the hole."</p>
+    </div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">⚓ Right of Way Rules <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Rule</th><th>Details</th></tr>
+        <tr><td>Sail vs Power</td><td>Sailboats under sail have right of way over powerboats (exceptions: commercial vessels in channels, vessels restricted in ability to maneuver)</td></tr>
+        <tr><td>Starboard Tack</td><td>A boat on starboard tack (wind from starboard/right side) has right of way over a boat on port tack</td></tr>
+        <tr><td>Leeward Boat</td><td>When on same tack, the leeward boat (downwind) has right of way over windward boat</td></tr>
+        <tr><td>Overtaking</td><td>The overtaking vessel must keep clear of the vessel being overtaken</td></tr>
+        <tr><td>Head On (Power)</td><td>Both vessels alter course to starboard (right)</td></tr>
+      </table>
+      <h4>Remember: Stand-on vs Give-way</h4>
+      <p><strong>Stand-on vessel</strong>: Maintains course and speed. <strong>Give-way vessel</strong>: Takes early and substantial action to keep clear.</p>
+    </div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">🔴 Buoyage System (IALA-B / US) <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Marker</th><th>Color</th><th>Shape</th><th>Rule</th></tr>
+        <tr><td>Channel (Port)</td><td>🟢 Green</td><td>Can (flat top)</td><td>Keep to your LEFT returning from sea</td></tr>
+        <tr><td>Channel (Starboard)</td><td>🔴 Red</td><td>Nun (pointed)</td><td>Keep to your RIGHT returning from sea</td></tr>
+        <tr><td>Safe Water</td><td>Red & White</td><td>Sphere</td><td>Mid-channel, pass on either side</td></tr>
+        <tr><td>Danger/Isolated</td><td>Black & Red</td><td>Sphere x2</td><td>Isolated danger, pass on either side</td></tr>
+      </table>
+      <h4>Memory Aid</h4>
+      <p><strong>"Red Right Returning"</strong> &mdash; Keep red buoys on your right (starboard) when returning from sea to port.</p>
+    </div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">📐 Boat Parts & Terminology <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Term</th><th>Meaning</th></tr>
+        <tr><td>Bow</td><td>Front of the boat</td></tr>
+        <tr><td>Stern</td><td>Back of the boat</td></tr>
+        <tr><td>Port</td><td>Left side (facing forward) &mdash; red light</td></tr>
+        <tr><td>Starboard</td><td>Right side (facing forward) &mdash; green light</td></tr>
+        <tr><td>Beam</td><td>Widest part of the hull</td></tr>
+        <tr><td>Draft</td><td>Depth of the keel below waterline</td></tr>
+        <tr><td>Helm / Tiller</td><td>Steering mechanism</td></tr>
+        <tr><td>Boom</td><td>Horizontal spar attached to the mast base</td></tr>
+        <tr><td>Halyard</td><td>Line used to raise sails</td></tr>
+        <tr><td>Sheet</td><td>Line used to trim (adjust) sails</td></tr>
+        <tr><td>Clew</td><td>Lower aft corner of a sail</td></tr>
+        <tr><td>Luff</td><td>Forward edge of a sail / sail flapping</td></tr>
+        <tr><td>Leech</td><td>Trailing edge of a sail</td></tr>
+        <tr><td>Keel</td><td>Fixed fin under hull providing stability</td></tr>
+        <tr><td>Rudder</td><td>Underwater blade for steering</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">🌊 Beaufort Wind Scale <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Force</th><th>Knots</th><th>Description</th><th>Sea State</th></tr>
+        <tr><td>0</td><td>0-1</td><td>Calm</td><td>Mirror-like</td></tr>
+        <tr><td>1</td><td>1-3</td><td>Light Air</td><td>Ripples</td></tr>
+        <tr><td>2</td><td>4-6</td><td>Light Breeze</td><td>Small wavelets</td></tr>
+        <tr><td>3</td><td>7-10</td><td>Gentle Breeze</td><td>Large wavelets, crests begin to break</td></tr>
+        <tr><td>4</td><td>11-16</td><td>Moderate Breeze</td><td>Small waves, frequent whitecaps</td></tr>
+        <tr><td>5</td><td>17-21</td><td>Fresh Breeze</td><td>Moderate waves, many whitecaps</td></tr>
+        <tr><td>6</td><td>22-27</td><td>Strong Breeze</td><td>Large waves, white foam crests</td></tr>
+        <tr><td>7</td><td>28-33</td><td>Near Gale</td><td>Sea heaps up, foam blown in streaks</td></tr>
+        <tr><td>8</td><td>34-40</td><td>Gale</td><td>High waves, dense foam streaks</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="ref-section"><div class="ref-header" onclick="toggleRef(this)">📻 VHF Radio Channels <span class="arrow-toggle">▼</span></div>
+    <div class="ref-body">
+      <table>
+        <tr><th>Channel</th><th>Use</th></tr>
+        <tr><td>16</td><td>Distress, Safety & Calling (monitored by USCG)</td></tr>
+        <tr><td>09</td><td>Supplementary calling channel (recreational)</td></tr>
+        <tr><td>13</td><td>Bridge-to-bridge navigation safety</td></tr>
+        <tr><td>22A</td><td>USCG liaison / Marine Safety broadcasts</td></tr>
+        <tr><td>68, 69, 71, 72</td><td>Recreational ship-to-ship</td></tr>
+        <tr><td>WX1-WX7</td><td>NOAA weather broadcasts (receive only)</td></tr>
+      </table>
+      <h4>MAYDAY Call Format</h4>
+      <p>"MAYDAY, MAYDAY, MAYDAY. This is [vessel name] x3. Our position is [lat/lng]. We are [nature of distress]. We have [number of persons] aboard. We require [type of assistance]. Over."</p>
+    </div>
+  </div>
+
+  <!-- Pre-loaded Waypoints -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">⚓ NY Harbor Waypoints</div>
+    <div class="wp-list" id="presetWPList"></div>
+  </div>
+
+  <div class="app-footer">
+    <a href="https://sailtruenorth.com" target="_blank">sailtruenorth.com</a> &bull; <a href="tel:+19084890589">(908) 489-0589</a><br>
+    <a href="https://maps.apple.com/?q=Liberty+Landing+Marina+Jersey+City+NJ" target="_blank">Liberty Landing Marina, Jersey City, NJ</a><br>
+    <a href="https://sailtruenorth.com/sailing-school/course-registration-form/" target="_blank" class="footer-register">Register for a Course &rarr;</a>
+  </div>
+</div>
+
+<!-- ═══ COURSES ═══ -->
+<div class="panel" id="panel-courses">
+  <div style="text-align:center;margin-bottom:16px;">
+    <div style="font-family:var(--font-display, 'Playfair Display', Georgia, serif);font-size:22px;color:var(--tn-gold, #d4a843)">ASA Courses</div>
+    <div style="font-size:12px;color:var(--tn-pale, #c5e4f3)">6-Time ASA School of the Year Award Winner</div>
+  </div>
+
+  <!-- ASA 101 -->
+  <div class="course-card">
+    <div class="course-banner">
+      <div class="course-asa">ASA 101</div>
+      <div class="course-name">Basic Sailing</div>
+    </div>
+    <div class="course-body">
+      <p class="course-desc">For those new to sailing or with minimal experience. A three-day course providing a firm foundation of skills to confidently sail a 24'-30' keelboat in moderate conditions. Taught aboard J/29 sloops with a maximum 4:1 student ratio.</p>
+      <div class="course-detail-grid">
+        <div class="course-detail"><div class="cd-label">Duration</div><div class="cd-value">21 hours (3 days)</div></div>
+        <div class="course-detail"><div class="cd-label">Prerequisite</div><div class="cd-value">None</div></div>
+        <div class="course-detail"><div class="cd-label">Boats</div><div class="cd-value">J/29 Sloops</div></div>
+        <div class="course-detail"><div class="cd-label">Price</div><div class="cd-value">$720 (with ASA cert)</div></div>
+      </div>
+      <div class="course-topics">
+        <span class="topic-tag">Sailing Theory</span>
+        <span class="topic-tag">Tacking & Jibing</span>
+        <span class="topic-tag">Points of Sail</span>
+        <span class="topic-tag">Sail Trim</span>
+        <span class="topic-tag">Knots</span>
+        <span class="topic-tag">Right of Way</span>
+        <span class="topic-tag">MOB Recovery</span>
+        <span class="topic-tag">Reefing</span>
+        <span class="topic-tag">Docking</span>
+        <span class="topic-tag">Engine Operation</span>
+        <span class="topic-tag">Buoyage Systems</span>
+      </div>
+      <div class="course-links">
+        <a href="https://sailtruenorth.com/sailing-school/basic-sailing-a-s-a-101/" target="_blank" class="course-cta course-info-btn">Course Details</a>
+        <a href="https://sailtruenorth.com/sailing-school/course-registration-form/" target="_blank" class="course-cta">Register Now &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASA 103 -->
+  <div class="course-card">
+    <div class="course-banner">
+      <div class="course-asa">ASA 103</div>
+      <div class="course-name">Coastal Cruising</div>
+    </div>
+    <div class="course-body">
+      <p class="course-desc">Advanced course for certified or experienced sailors. Prepare to cruise safely in coastal waters as skipper or crew. Chart reading, plotting, and coastal navigation are emphasized. Taught aboard a 40' Hanse Yacht.</p>
+      <div class="course-detail-grid">
+        <div class="course-detail"><div class="cd-label">Duration</div><div class="cd-value">3 days (classroom + sailing)</div></div>
+        <div class="course-detail"><div class="cd-label">Prerequisite</div><div class="cd-value">ASA 101 or equivalent</div></div>
+        <div class="course-detail"><div class="cd-label">Boats</div><div class="cd-value">40' Hanse Yacht</div></div>
+        <div class="course-detail"><div class="cd-label">Price</div><div class="cd-value">$695 (or $995 combo with 104)</div></div>
+      </div>
+      <div class="course-topics">
+        <span class="topic-tag">Advanced Sail Trim</span>
+        <span class="topic-tag">Navigation</span>
+        <span class="topic-tag">GPS Operation</span>
+        <span class="topic-tag">VHF Radio</span>
+        <span class="topic-tag">Diesel Engine</span>
+        <span class="topic-tag">Docking & Anchoring</span>
+        <span class="topic-tag">Lights at Night</span>
+        <span class="topic-tag">Electrical Systems</span>
+      </div>
+      <div class="course-links">
+        <a href="https://sailtruenorth.com/sailing-school/coastal-cruising-a-s-a-103/" target="_blank" class="course-cta course-info-btn">Course Details</a>
+        <a href="https://sailtruenorth.com/sailing-school/course-registration-form/" target="_blank" class="course-cta">Register Now &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASA 104 -->
+  <div class="course-card">
+    <div class="course-banner">
+      <div class="course-asa">ASA 104</div>
+      <div class="course-name">Bareboat Charter Prep</div>
+    </div>
+    <div class="course-body">
+      <p class="course-desc">Prepare to charter a 40'-50' yacht without a hired captain. This course opens the door to tropical destinations and extended passages. Also offered in the British Virgin Islands on the BVI Flotilla.</p>
+      <div class="course-detail-grid">
+        <div class="course-detail"><div class="cd-label">Duration</div><div class="cd-value">3 days (classroom + sailing)</div></div>
+        <div class="course-detail"><div class="cd-label">Prerequisite</div><div class="cd-value">ASA 103 or equivalent</div></div>
+        <div class="course-detail"><div class="cd-label">Boats</div><div class="cd-value">40' Hanse Yacht</div></div>
+        <div class="course-detail"><div class="cd-label">Price</div><div class="cd-value">$795 (or $995 combo with 103)</div></div>
+      </div>
+      <div class="course-topics">
+        <span class="topic-tag">Advanced Sail Trim</span>
+        <span class="topic-tag">Advanced Navigation</span>
+        <span class="topic-tag">Cruise Planning</span>
+        <span class="topic-tag">Provisioning</span>
+        <span class="topic-tag">Anchoring</span>
+        <span class="topic-tag">Docking</span>
+        <span class="topic-tag">Fueling</span>
+        <span class="topic-tag">Galley Procedures</span>
+        <span class="topic-tag">Electrical & Water Systems</span>
+      </div>
+      <div class="course-links">
+        <a href="https://sailtruenorth.com/sailing-school/bareboat-charter-prep-a-s-a-104/" target="_blank" class="course-cta course-info-btn">Course Details</a>
+        <a href="https://sailtruenorth.com/sailing-school/course-registration-form/" target="_blank" class="course-cta">Register Now &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-footer">
+    <a href="https://sailtruenorth.com" target="_blank">sailtruenorth.com</a> &bull; <a href="tel:+19084890589">(908) 489-0589</a><br>
+    <a href="https://maps.apple.com/?q=Liberty+Landing+Marina+Jersey+City+NJ" target="_blank">Liberty Landing Marina, Jersey City, NJ</a><br>
+    6-Time ASA Sailing School of the Year<br>
+    <a href="https://sailtruenorth.com/sailing-school/" target="_blank">All Courses</a> &bull;
+    <a href="https://sailtruenorth.com/sailing-school/private-lessons/" target="_blank">Private Lessons</a> &bull;
+    <a href="https://sailtruenorth.com/sailing-school/teen-sailing-camp/" target="_blank">Teen Camp</a> &bull;
+    <a href="https://sailtruenorth.com/sailing-school/corporate-group-events/" target="_blank">Corporate Events</a>
+  </div>
+</div>
+
+<!-- ═══ KNOTS ═══ -->
+<!-- ═══ KNOTS ═══ -->
+<div class="panel" id="panel-knots">
+  <div style="text-align:center;margin-bottom:16px;">
+    <div style="font-family:var(--font-display, 'Playfair Display', Georgia, serif);font-size:22px;color:var(--tn-gold, #d4a843)">Knot Tying Guide</div>
+    <div style="font-size:12px;color:var(--tn-pale, #c5e4f3)">Tap a knot, then step through the animation</div>
+  </div>
+
+  <!-- ════════ BOWLINE ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Bowline <span class="knot-difficulty diff-easy">EASY</span></div>
+      <div class="knot-use">The King of Knots &mdash; creates a fixed loop that won&rsquo;t slip</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Jib sheets, dock lines, rescue loops, towing. The #1 knot every sailor must know.</div>
+      <div class="knot-stage" id="knot-bowline-stage">
+        <svg viewBox="0 0 400 280">
+          <!-- Step 0: standing part laid out -->
+          <path class="rope rope-stand" id="bow-s0" d="M 40 200 C 60 200, 80 200, 120 200 C 160 200, 200 200, 240 200" opacity="0"/>
+          <text class="label" id="bow-t0a" x="60" y="220" opacity="0">standing part</text>
+          <text class="label label-gold" id="bow-t0b" x="210" y="220" opacity="0">working end &rarr;</text>
+
+          <!-- Step 1: form the loop (the "hole") -->
+          <path class="rope rope-stand" id="bow-s1a" d="M 40 200 C 60 200, 100 200, 140 200" opacity="0"/>
+          <path class="rope rope-work" id="bow-s1b" d="M 140 200 C 160 200, 195 195, 210 175 C 225 155, 225 130, 205 120 C 185 110, 165 120, 160 140 C 155 160, 165 180, 175 190" opacity="0"/>
+          <ellipse id="bow-hole1" cx="190" cy="160" rx="30" ry="35" fill="none" stroke="rgba(59,163,208,0.25)" stroke-width="1.5" stroke-dasharray="5 4" opacity="0"/>
+          <text class="label" id="bow-t1" x="230" y="158" opacity="0">the &ldquo;hole&rdquo;</text>
+
+          <!-- Step 2: rabbit up through hole -->
+          <path class="rope rope-stand" id="bow-s2a" d="M 40 200 C 60 200, 100 200, 140 200 C 160 200, 195 195, 210 175 C 225 155, 225 130, 205 120 C 185 110, 165 120, 160 140 C 155 160, 165 180, 175 190" opacity="0"/>
+          <path class="rope rope-work" id="bow-s2b" d="M 170 195 C 172 180, 176 160, 180 140 C 184 120, 188 100, 190 75 L 192 50" opacity="0"/>
+          <circle id="bow-tip2" cx="192" cy="47" r="5" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="bow-t2" x="205" y="52" opacity="0">up through!</text>
+
+          <!-- Step 3: around the tree -->
+          <path class="rope rope-stand" id="bow-s3a" d="M 40 200 C 60 200, 100 200, 140 200 C 160 200, 195 195, 210 175 C 225 155, 225 130, 205 120 C 185 110, 165 120, 160 140 C 155 160, 165 180, 175 190" opacity="0"/>
+          <path class="rope rope-stand" id="bow-s3tree" d="M 140 200 L 140 40" opacity="0" style="stroke:rgba(127,200,232,0.3);stroke-width:4;stroke-dasharray:6 5"/>
+          <path class="rope rope-work" id="bow-s3b" d="M 170 195 C 172 180, 176 160, 180 140 C 184 120, 188 100, 190 75 C 192 58, 185 42, 170 38 C 155 34, 140 38, 130 48 C 118 60, 112 78, 110 95" opacity="0"/>
+          <circle id="bow-tip3" cx="110" cy="98" r="5" fill="#d4a843" opacity="0"/>
+          <text class="label" id="bow-t3a" x="140" y="28" text-anchor="middle" opacity="0">the &ldquo;tree&rdquo;</text>
+          <text class="label label-gold" id="bow-t3b" x="95" y="85" opacity="0">&larr; around</text>
+
+          <!-- Step 4: back down the hole - complete -->
+          <path class="rope rope-stand" id="bow-s4a" d="M 40 200 C 60 200, 100 200, 140 200 C 160 200, 195 195, 210 175 C 225 155, 225 130, 205 120 C 185 110, 165 120, 160 140 C 155 160, 165 180, 175 190" opacity="0"/>
+          <path class="rope rope-stand" id="bow-s4tree" d="M 140 200 L 140 40" opacity="0" style="stroke:rgba(127,200,232,0.2);stroke-width:3;stroke-dasharray:6 5"/>
+          <path class="rope rope-work" id="bow-s4b" d="M 170 195 C 172 180, 176 160, 180 140 C 184 120, 188 100, 190 75 C 192 58, 185 42, 170 38 C 155 34, 140 38, 130 48 C 118 60, 112 78, 110 95 C 108 112, 118 130, 135 140 C 152 150, 172 148, 180 138 C 188 128, 184 115, 175 118 C 168 120, 170 135, 174 155 L 178 195" opacity="0"/>
+          <!-- Loop indicator -->
+          <path id="bow-loopind" d="M 225 190 C 260 190, 275 155, 260 125 C 245 95, 215 95, 210 125" fill="none" stroke="rgba(212,168,67,0.3)" stroke-width="1.5" stroke-dasharray="4 3" opacity="0"/>
+          <text class="label label-gold" id="bow-t4a" x="270" y="155" opacity="0">fixed</text>
+          <text class="label label-gold" id="bow-t4b" x="270" y="168" opacity="0">loop</text>
+          <text class="label label-gold" id="bow-t4c" x="140" y="270" text-anchor="middle" opacity="0">PULL TO SET &#x2714;</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-bowline-dots"></div>
+      <div class="knot-step-text" id="knot-bowline-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('bowline',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('bowline',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('bowline',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">&ldquo;The rabbit comes out of the hole, goes around the tree, and back down the hole.&rdquo;</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ CLEAT HITCH ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Cleat Hitch <span class="knot-difficulty diff-easy">EASY</span></div>
+      <div class="knot-use">Secures a line to a horn cleat on boat or dock</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Securing dock lines, halyards, sheets to cleats. Used every time you tie up.</div>
+      <div class="knot-stage" id="knot-cleat-stage">
+        <svg viewBox="0 0 400 220">
+          <!-- Cleat hardware -->
+          <rect class="obj" x="140" y="88" width="120" height="22" rx="5"/>
+          <rect class="obj" x="125" y="78" width="20" height="42" rx="8"/>
+          <rect class="obj" x="255" y="78" width="20" height="42" rx="8"/>
+          <text class="label" x="115" y="72" opacity="0.6">horn</text>
+          <text class="label" x="252" y="72" opacity="0.6">horn</text>
+
+          <!-- Step 0: line approaching -->
+          <path class="rope rope-stand" id="clt-s0" d="M 30 145 C 50 140, 80 130, 120 115" opacity="0"/>
+          <text class="label" id="clt-t0" x="40" y="165" opacity="0">load &rarr;</text>
+
+          <!-- Step 1: wrap around far horn -->
+          <path class="rope rope-stand" id="clt-s1a" d="M 30 145 C 50 140, 80 130, 120 115" opacity="0"/>
+          <path class="rope rope-work" id="clt-s1b" d="M 120 115 C 130 110, 135 100, 135 92 C 135 82, 145 78, 200 78 C 255 78, 275 82, 275 92 C 275 102, 270 110, 265 115" opacity="0"/>
+          <text class="label label-gold" id="clt-t1" x="200" y="68" text-anchor="middle" opacity="0">wrap far horn first</text>
+
+          <!-- Step 2: first figure-8 -->
+          <path class="rope rope-stand" id="clt-s2a" d="M 30 145 C 50 140, 80 130, 120 115 C 130 110, 135 100, 135 92 C 135 82, 145 78, 200 78 C 255 78, 275 82, 275 92 C 275 102, 270 110, 265 115" opacity="0"/>
+          <path class="rope rope-work" id="clt-s2b" d="M 265 115 L 135 82 L 265 82" opacity="0"/>
+          <text class="label label-gold" id="clt-t2" x="200" y="155" text-anchor="middle" opacity="0">figure-8 across horns</text>
+
+          <!-- Step 3: second figure-8 -->
+          <path class="rope rope-stand" id="clt-s3a" d="M 30 145 C 50 140, 80 130, 120 115 C 130 110, 135 100, 135 92 C 135 82, 145 78, 200 78 C 255 78, 275 82, 275 92 C 275 102, 270 110, 265 115 L 135 82 L 265 82" opacity="0"/>
+          <path class="rope rope-work" id="clt-s3b" d="M 265 82 L 135 115 L 265 115" opacity="0"/>
+          <text class="label label-gold" id="clt-t3" x="200" y="155" text-anchor="middle" opacity="0">second figure-8</text>
+
+          <!-- Step 4: locking hitch -->
+          <path class="rope rope-stand" id="clt-s4a" d="M 30 145 C 50 140, 80 130, 120 115 C 130 110, 135 100, 135 92 C 135 82, 145 78, 200 78 C 255 78, 275 82, 275 92 C 275 102, 270 110, 265 115 L 135 82 L 265 82 L 135 115 L 265 115" opacity="0"/>
+          <path class="rope rope-work" id="clt-s4b" d="M 265 115 C 250 112, 220 100, 200 92" opacity="0"/>
+          <ellipse id="clt-lock" cx="200" cy="88" rx="18" ry="12" fill="none" stroke="#d4a843" stroke-width="2.5" opacity="0"/>
+          <text class="label label-gold" id="clt-t4" x="200" y="200" text-anchor="middle" opacity="0">flip loop over horn &#x2714;</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-cleat-dots"></div>
+      <div class="knot-step-text" id="knot-cleat-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('cleat',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('cleat',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('cleat',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">One full wrap, two figure-8s, finish with a locking hitch. Never more than one lock!</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ FIGURE EIGHT ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Figure Eight <span class="knot-difficulty diff-easy">EASY</span></div>
+      <div class="knot-use">Stopper knot &mdash; prevents line from running through a block</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> End of every sheet and halyard. Required on all running rigging.</div>
+      <div class="knot-stage" id="knot-fig8-stage">
+        <svg viewBox="0 0 400 240">
+          <!-- Step 0: straight line -->
+          <path class="rope rope-stand" id="f8-s0" d="M 50 120 C 100 120, 200 120, 350 120" opacity="0"/>
+          <text class="label" id="f8-t0a" x="70" y="108" opacity="0">standing part</text>
+          <text class="label label-gold" id="f8-t0b" x="290" y="108" opacity="0">working end</text>
+
+          <!-- Step 1: form loop over -->
+          <path class="rope rope-stand" id="f8-s1a" d="M 50 120 C 100 120, 140 120, 180 120" opacity="0"/>
+          <path class="rope rope-work" id="f8-s1b" d="M 180 120 C 200 120, 225 115, 240 100 C 258 82, 262 58, 248 45 C 234 32, 212 35, 200 50 C 188 65, 190 85, 200 100" opacity="0"/>
+          <text class="label label-gold" id="f8-t1" x="275" y="42" opacity="0">loop OVER</text>
+
+          <!-- Step 2: pass under -->
+          <path class="rope rope-stand" id="f8-s2a" d="M 50 120 C 100 120, 140 120, 180 120" opacity="0"/>
+          <path class="rope rope-work" id="f8-s2b" d="M 180 120 C 200 120, 225 115, 240 100 C 258 82, 262 58, 248 45 C 234 32, 212 35, 200 50 C 188 65, 178 85, 165 100 C 152 115, 138 130, 128 140 C 118 150, 108 148, 105 138" opacity="0"/>
+          <text class="label label-gold" id="f8-t2" x="90" y="160" opacity="0">pass UNDER</text>
+
+          <!-- Step 3: back through loop -->
+          <path class="rope rope-stand" id="f8-s3a" d="M 50 120 C 100 120, 140 120, 180 120" opacity="0"/>
+          <path class="rope rope-work" id="f8-s3b" d="M 180 120 C 200 120, 225 115, 240 100 C 258 82, 262 58, 248 45 C 234 32, 212 35, 200 50 C 188 65, 178 85, 165 100 C 152 115, 138 130, 128 140 C 118 150, 108 148, 105 138 C 102 128, 112 108, 130 95 C 148 82, 170 72, 195 55" opacity="0"/>
+          <circle id="f8-end" cx="198" cy="52" r="5" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="f8-t3" x="200" y="215" text-anchor="middle" opacity="0">through loop &amp; pull tight &#x2714;</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-fig8-dots"></div>
+      <div class="knot-step-text" id="knot-fig8-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('fig8',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('fig8',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('fig8',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">Over, under, and through. It looks like an 8 when done right!</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ ROUND TURN & 2 HALF HITCHES ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Round Turn &amp; 2 Half Hitches <span class="knot-difficulty diff-medium">MEDIUM</span></div>
+      <div class="knot-use">Ties a line to a ring, post, or rail &mdash; adjustable &amp; secure</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Fenders to lifelines, securing to pilings, attaching to rings. Easy to tie under load.</div>
+      <div class="knot-stage" id="knot-rt2hh-stage">
+        <svg viewBox="0 0 400 240">
+          <!-- Post -->
+          <rect class="obj" x="88" y="30" width="24" height="180" rx="12"/>
+          <text class="label" x="100" y="22" text-anchor="middle" opacity="0.6">post</text>
+
+          <!-- Step 0: approaching -->
+          <path class="rope rope-stand" id="rt-s0" d="M 25 180 C 40 175, 60 165, 82 155" opacity="0"/>
+          <text class="label" id="rt-t0" x="25" y="200" opacity="0">load &rarr;</text>
+
+          <!-- Step 1: round turn (2 full wraps) -->
+          <path class="rope rope-stand" id="rt-s1a" d="M 25 180 C 40 175, 60 165, 82 155" opacity="0"/>
+          <path class="rope rope-work" id="rt-s1b" d="M 82 155 C 78 148, 68 130, 68 115 C 68 90, 82 72, 100 72 C 118 72, 135 90, 135 115 C 135 140, 115 158, 100 158 C 85 158, 68 145, 68 125 C 68 105, 82 85, 100 85 C 118 85, 132 100, 132 115 C 132 130, 122 140, 115 138" opacity="0"/>
+          <text class="label label-gold" id="rt-t1" x="150" y="72" opacity="0">round turn</text>
+          <text class="label label-gold" id="rt-t1b" x="150" y="85" opacity="0">(2 full wraps)</text>
+
+          <!-- Step 2: first half hitch -->
+          <path class="rope rope-stand" id="rt-s2a" d="M 25 180 C 40 175, 60 165, 82 155 C 78 148, 68 130, 68 115 C 68 90, 82 72, 100 72 C 118 72, 135 90, 135 115 C 135 140, 115 158, 100 158 C 85 158, 68 145, 68 125 C 68 105, 82 85, 100 85 C 118 85, 132 100, 132 115 C 132 130, 122 140, 115 138" opacity="0"/>
+          <path class="rope rope-work" id="rt-s2b" d="M 115 138 C 130 135, 160 125, 180 118 C 200 110, 215 100, 218 110 C 222 122, 210 128, 195 125 C 180 122, 170 118, 168 115" opacity="0"/>
+          <text class="label label-gold" id="rt-t2" x="230" y="108" opacity="0">half hitch 1</text>
+
+          <!-- Step 3: second half hitch -->
+          <path class="rope rope-stand" id="rt-s3a" d="M 25 180 C 40 175, 60 165, 82 155 C 78 148, 68 130, 68 115 C 68 90, 82 72, 100 72 C 118 72, 135 90, 135 115 C 135 140, 115 158, 100 158 C 85 158, 68 145, 68 125 C 68 105, 82 85, 100 85 C 118 85, 132 100, 132 115 C 132 130, 122 140, 115 138 C 130 135, 160 125, 180 118 C 200 110, 215 100, 218 110 C 222 122, 210 128, 195 125 C 180 122, 170 118, 168 115" opacity="0"/>
+          <path class="rope rope-work" id="rt-s3b" d="M 168 115 C 190 110, 230 100, 255 92 C 275 85, 290 78, 292 88 C 295 100, 282 105, 268 100 C 254 95, 245 90, 242 88" opacity="0"/>
+          <circle id="rt-end" cx="240" cy="88" r="4" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="rt-t3" x="300" y="88" opacity="0">half hitch 2 &#x2714;</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-rt2hh-dots"></div>
+      <div class="knot-step-text" id="knot-rt2hh-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('rt2hh',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('rt2hh',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('rt2hh',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">The round turn takes the load. The two half hitches just lock it in place.</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ CLOVE HITCH ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Clove Hitch <span class="knot-difficulty diff-easy">EASY</span></div>
+      <div class="knot-use">Quick temporary tie to a post, piling, or rail</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Temporarily securing fenders, quick dock tie. Always back up with a better knot!</div>
+      <div class="knot-stage" id="knot-clove-stage">
+        <svg viewBox="0 0 400 240">
+          <!-- Post -->
+          <rect class="obj" x="175" y="25" width="24" height="185" rx="12"/>
+          <text class="label" x="187" y="18" text-anchor="middle" opacity="0.6">post</text>
+
+          <!-- Step 0: approaching -->
+          <path class="rope rope-stand" id="cv-s0" d="M 40 115 C 70 115, 110 115, 168 115" opacity="0"/>
+          <text class="label" id="cv-t0" x="50" y="105" opacity="0">load &rarr;</text>
+
+          <!-- Step 1: first wrap -->
+          <path class="rope rope-stand" id="cv-s1a" d="M 40 115 C 70 115, 120 115, 168 115" opacity="0"/>
+          <path class="rope rope-work" id="cv-s1b" d="M 168 115 C 165 105, 155 82, 160 65 C 165 48, 180 38, 195 42 C 210 48, 218 65, 215 85 C 212 105, 202 118, 195 125" opacity="0"/>
+          <text class="label label-gold" id="cv-t1" x="230" y="55" opacity="0">over &amp; around</text>
+
+          <!-- Step 2: cross and second wrap -->
+          <path class="rope rope-stand" id="cv-s2a" d="M 40 115 C 70 115, 120 115, 168 115 C 165 105, 155 82, 160 65 C 165 48, 180 38, 195 42 C 210 48, 218 65, 215 85 C 212 105, 202 118, 195 125" opacity="0"/>
+          <path class="rope rope-work" id="cv-s2b" d="M 195 125 C 185 135, 162 148, 158 162 C 154 178, 168 195, 185 198 C 202 200, 218 188, 218 170 C 218 155, 208 140, 198 132" opacity="0"/>
+          <text class="label label-gold" id="cv-t2" x="230" y="180" opacity="0">cross &amp; wrap</text>
+
+          <!-- Step 3: tuck under -->
+          <path class="rope rope-stand" id="cv-s3a" d="M 40 115 C 70 115, 120 115, 168 115 C 165 105, 155 82, 160 65 C 165 48, 180 38, 195 42 C 210 48, 218 65, 215 85 C 212 105, 202 118, 195 125 C 185 135, 162 148, 158 162 C 154 178, 168 195, 185 198 C 202 200, 218 188, 218 170 C 218 155, 208 140, 198 132" opacity="0"/>
+          <path class="rope rope-work" id="cv-s3b" d="M 198 132 L 200 55" opacity="0"/>
+          <circle id="cv-end" cx="200" cy="50" r="5" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="cv-t3" x="218" y="50" opacity="0">tuck &#x2714;</text>
+          <text class="label" id="cv-warn" x="200" y="230" text-anchor="middle" opacity="0" style="fill:rgba(220,80,80,0.7);font-size:10px">&#x26A0; can slip under load &mdash; use as temporary only!</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-clove-dots"></div>
+      <div class="knot-step-text" id="knot-clove-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('clove',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('clove',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('clove',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">Two loops over a post, one crossed over the other. Quick but temporary!</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ SHEET BEND ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Sheet Bend <span class="knot-difficulty diff-medium">MEDIUM</span></div>
+      <div class="knot-use">Joins two lines of different thickness together</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Extending a dock line, joining lines of different diameters. Works where a reef knot would slip.</div>
+      <div class="knot-stage" id="knot-sheet-stage">
+        <svg viewBox="0 0 400 240">
+          <!-- Step 0: two lines -->
+          <path class="rope rope-stand" id="sh-s0a" d="M 30 130 C 80 130, 130 130, 200 130" opacity="0" style="stroke-width:7"/>
+          <path class="rope rope-work" id="sh-s0b" d="M 370 100 C 320 100, 270 100, 210 100" opacity="0"/>
+          <text class="label" id="sh-t0a" x="80" y="150" opacity="0">thick line</text>
+          <text class="label label-gold" id="sh-t0b" x="280" y="90" opacity="0">thin line</text>
+
+          <!-- Step 1: bight in thick line -->
+          <path class="rope rope-stand" id="sh-s1" d="M 30 130 C 80 130, 120 130, 150 130 C 175 130, 198 118, 200 98 C 202 78, 188 62, 170 60 C 152 58, 138 70, 135 90 C 132 110, 142 128, 150 130" opacity="0" style="stroke-width:7"/>
+          <text class="label" id="sh-t1" x="215" y="82" opacity="0">bight (U-shape)</text>
+
+          <!-- Step 2: thin line up through -->
+          <path class="rope rope-stand" id="sh-s2a" d="M 30 130 C 80 130, 120 130, 150 130 C 175 130, 198 118, 200 98 C 202 78, 188 62, 170 60 C 152 58, 138 70, 135 90 C 132 110, 142 128, 150 130" opacity="0" style="stroke-width:7"/>
+          <path class="rope rope-work" id="sh-s2b" d="M 370 148 C 320 148, 240 145, 190 140 C 165 138, 155 130, 158 118 C 162 105, 170 92, 175 75 L 178 55" opacity="0"/>
+          <circle id="sh-tip2" cx="178" cy="52" r="5" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="sh-t2" x="192" y="50" opacity="0">up through!</text>
+
+          <!-- Step 3: wrap and tuck -->
+          <path class="rope rope-stand" id="sh-s3a" d="M 30 130 C 80 130, 120 130, 150 130 C 175 130, 198 118, 200 98 C 202 78, 188 62, 170 60 C 152 58, 138 70, 135 90 C 132 110, 142 128, 150 130" opacity="0" style="stroke-width:7"/>
+          <path class="rope rope-work" id="sh-s3b" d="M 370 148 C 320 148, 240 145, 190 140 C 165 138, 155 130, 158 118 C 162 105, 170 92, 175 75 C 178 60, 172 48, 160 45 C 148 42, 132 48, 125 60 C 118 72, 122 88, 135 98 C 148 108, 165 108, 175 100" opacity="0"/>
+          <circle id="sh-end" cx="178" cy="98" r="4" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="sh-t3" x="200" y="210" text-anchor="middle" opacity="0">wrap both legs &amp; tuck under self &#x2714;</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-sheet-dots"></div>
+      <div class="knot-step-text" id="knot-sheet-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('sheet',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('sheet',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('sheet',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">Like a bowline tied around another line. The thinner line does all the work!</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ REEF KNOT ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Reef (Square) Knot <span class="knot-difficulty diff-easy">EASY</span></div>
+      <div class="knot-use">Ties two ends of the same line &mdash; reefing the mainsail</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Tying reef points on the mainsail, bundling a furled sail. NEVER use to join two separate lines.</div>
+      <div class="knot-stage" id="knot-reef-stage">
+        <svg viewBox="0 0 400 200">
+          <!-- Step 0: two ends -->
+          <path class="rope rope-stand" id="rf-s0a" d="M 40 100 C 80 100, 120 100, 170 100" opacity="0"/>
+          <path class="rope rope-work" id="rf-s0b" d="M 360 100 C 320 100, 280 100, 230 100" opacity="0"/>
+          <text class="label" id="rf-t0a" x="60" y="88" opacity="0">right end</text>
+          <text class="label label-gold" id="rf-t0b" x="295" y="88" opacity="0">left end</text>
+
+          <!-- Step 1: right over left -->
+          <path class="rope rope-stand" id="rf-s1a" d="M 40 100 C 80 100, 130 100, 165 95 C 185 90, 210 78, 225 68 C 240 58, 255 55, 260 65 C 265 78, 252 90, 235 95 C 218 100, 200 105, 195 108" opacity="0"/>
+          <path class="rope rope-work" id="rf-s1b" d="M 360 100 C 320 100, 275 100, 240 102 C 215 105, 195 112, 185 125" opacity="0"/>
+          <text class="label label-gold" id="rf-t1" x="200" y="52" text-anchor="middle" opacity="0">right OVER left, tuck under</text>
+
+          <!-- Step 2: left over right, complete -->
+          <path class="rope rope-stand" id="rf-s2a" d="M 40 100 C 80 100, 130 100, 165 95 C 185 90, 210 78, 225 68 C 240 58, 255 55, 260 65 C 265 78, 252 90, 235 95 C 218 100, 195 105, 175 98 L 155 88" opacity="0"/>
+          <path class="rope rope-work" id="rf-s2b" d="M 360 100 C 320 100, 275 100, 240 102 C 215 105, 195 112, 185 125 C 178 135, 168 138, 162 130 C 155 120, 165 108, 180 100 C 195 92, 215 88, 240 92 L 258 98" opacity="0"/>
+          <text class="label label-gold" id="rf-t2" x="200" y="168" text-anchor="middle" opacity="0">left OVER right, tuck under &#x2714;</text>
+          <text class="label" id="rf-warn" x="200" y="188" text-anchor="middle" opacity="0" style="fill:rgba(220,80,80,0.6)">Should lay FLAT &mdash; if it capsizes, it&rsquo;s a granny knot!</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-reef-dots"></div>
+      <div class="knot-step-text" id="knot-reef-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('reef',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('reef',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('reef',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">&ldquo;Right over left, left over right, makes a knot both tidy and tight.&rdquo;</div>
+    </div></div>
+  </div>
+
+  <!-- ════════ ANCHOR BEND ════════ -->
+  <div class="knot-card">
+    <div class="knot-header" onclick="toggleKnot(this)">
+      <div><div class="knot-name">Anchor Bend <span class="knot-difficulty diff-medium">MEDIUM</span></div>
+      <div class="knot-use">Attaches anchor rode to the anchor ring</div></div>
+      <span class="arrow-toggle">&#x25BC;</span>
+    </div>
+    <div class="knot-body"><div class="knot-body-inner">
+      <div class="knot-when"><strong>When:</strong> Tying your anchor line to the anchor. More secure than a round turn in wet, slippery conditions.</div>
+      <div class="knot-stage" id="knot-anchor-stage">
+        <svg viewBox="0 0 400 240">
+          <!-- Ring -->
+          <ellipse class="obj" cx="105" cy="120" rx="35" ry="35" style="fill:none;stroke-width:3"/>
+          <text class="label" x="105" y="124" text-anchor="middle" opacity="0.6">ring</text>
+
+          <!-- Step 0: approaching -->
+          <path class="rope rope-stand" id="an-s0" d="M 25 190 C 40 185, 60 175, 75 160" opacity="0"/>
+          <text class="label" id="an-t0" x="22" y="210" opacity="0">to boat &rarr;</text>
+
+          <!-- Step 1: round turn through ring -->
+          <path class="rope rope-stand" id="an-s1a" d="M 25 190 C 40 185, 60 175, 75 160" opacity="0"/>
+          <path class="rope rope-work" id="an-s1b" d="M 75 160 C 72 148, 65 125, 65 110 C 65 88, 78 72, 100 68 C 122 65, 142 80, 145 105 C 148 130, 130 155, 110 158 C 90 160, 70 148, 68 128 C 66 108, 78 85, 100 80 C 122 75, 140 90, 142 108 C 144 126, 135 140, 128 142" opacity="0"/>
+          <text class="label label-gold" id="an-t1" x="160" y="68" opacity="0">round turn</text>
+          <text class="label label-gold" id="an-t1b" x="160" y="82" opacity="0">(through ring 2x)</text>
+
+          <!-- Step 2: tuck through turns -->
+          <path class="rope rope-stand" id="an-s2a" d="M 25 190 C 40 185, 60 175, 75 160 C 72 148, 65 125, 65 110 C 65 88, 78 72, 100 68 C 122 65, 142 80, 145 105 C 148 130, 130 155, 110 158 C 90 160, 70 148, 68 128 C 66 108, 78 85, 100 80 C 122 75, 140 90, 142 108 C 144 126, 135 140, 128 142" opacity="0"/>
+          <path class="rope rope-work" id="an-s2b" d="M 128 142 C 145 140, 180 128, 210 118 C 235 110, 255 100, 258 110 C 262 122, 248 128, 232 124 C 216 120, 205 115, 200 112" opacity="0"/>
+          <text class="label label-gold" id="an-t2" x="270" y="105" opacity="0">tuck through</text>
+          <text class="label label-gold" id="an-t2b" x="270" y="118" opacity="0">both turns</text>
+
+          <!-- Step 3: half hitch to finish -->
+          <path class="rope rope-stand" id="an-s3a" d="M 25 190 C 40 185, 60 175, 75 160 C 72 148, 65 125, 65 110 C 65 88, 78 72, 100 68 C 122 65, 142 80, 145 105 C 148 130, 130 155, 110 158 C 90 160, 70 148, 68 128 C 66 108, 78 85, 100 80 C 122 75, 140 90, 142 108 C 144 126, 135 140, 128 142 C 145 140, 180 128, 210 118 C 235 110, 255 100, 258 110 C 262 122, 248 128, 232 124 C 216 120, 205 115, 200 112" opacity="0"/>
+          <path class="rope rope-work" id="an-s3b" d="M 200 112 C 225 105, 275 92, 305 82 C 328 75, 345 68, 348 78 C 352 90, 338 95, 322 90 C 306 85, 296 80, 292 78" opacity="0"/>
+          <circle id="an-end" cx="290" cy="78" r="5" fill="#d4a843" opacity="0"/>
+          <text class="label label-gold" id="an-t3" x="355" y="82" opacity="0">half hitch &#x2714;</text>
+        </svg>
+      </div>
+      <div class="knot-progress" id="knot-anchor-dots"></div>
+      <div class="knot-step-text" id="knot-anchor-text"></div>
+      <div class="knot-ctrls">
+        <button class="knot-btn" onclick="knotStep('anchor',-1)">&#x25C0; Back</button>
+        <button class="knot-btn" onclick="knotStep('anchor',0)">Reset</button>
+        <button class="knot-btn primary" onclick="knotStep('anchor',1)">Next &#x25B6;</button>
+      </div>
+      <div class="knot-memory">Like round turn &amp; two half hitches, but the first hitch tucks through the turns for extra grip.</div>
+    </div></div>
+  </div>
+
+  <div style="margin-top:16px;padding:12px;background:rgba(212,168,67,0.08);border-radius:10px;text-align:center;">
+    <div style="color:var(--tn-gold, #d4a843);font-family:var(--font-display, 'Playfair Display', Georgia, serif);font-size:15px;margin-bottom:4px;">Practice Makes Perfect</div>
+    <div style="color:var(--tn-pale, #c5e4f3);font-size:12px;line-height:1.5;">Grab a piece of line and practice along with each animation. On a boat, you need to tie knots in the dark, with one hand, while heeling!</div>
+  </div>
+
+  <div class="app-footer">
+    <a href="https://sailtruenorth.com" target="_blank">sailtruenorth.com</a> &bull; <a href="tel:+19084890589">(908) 489-0589</a><br>
+    <a href="https://maps.apple.com/?q=Liberty+Landing+Marina+Jersey+City+NJ" target="_blank">Liberty Landing Marina, Jersey City, NJ</a><br>
+    6-Time ASA Sailing School of the Year<br>
+    <a href="https://sailtruenorth.com/sailing-school/course-registration-form/" target="_blank" class="footer-register">Register for a Course &rarr;</a>
+  </div>
+</div>
+
+<!-- ═══ YACHTS ═══ -->
+<div class="panel" id="panel-yachts">
+  <div style="text-align:center;margin-bottom:16px;">
+    <div style="font-family:var(--font-display, 'Playfair Display', Georgia, serif);font-size:22px;color:var(--tn-gold, #d4a843)">Charter Fleet Yachts</div>
+    <div style="font-size:12px;color:var(--tn-pale, #c5e4f3)">World-class yachts available through True North Sailing</div>
+  </div>
+
+  <div style="padding:10px 12px;background:rgba(212,168,67,0.08);border-radius:10px;margin-bottom:16px;text-align:center;">
+    <div style="font-size:12px;color:var(--tn-pale, #c5e4f3);line-height:1.6;">True North Sailing handles all charter bookings. Our fleet features yachts from the world&rsquo;s finest builders, available for bareboat or crewed charters across 20+ destinations worldwide. Contact us to plan your trip.</div>
+  </div>
+
+  <!-- ── SAILING CATAMARANS ── -->
+  <div class="yacht-section">
+    <div class="yacht-section-title">Sailing Catamarans <span class="yacht-type-badge badge-cat">CATAMARAN</span></div>
+
+    <div class="yacht-mfr-info">
+      <h4>Robertson &amp; Caine &mdash; Leopard Catamarans</h4>
+      <p>Built in Cape Town, South Africa. Robertson &amp; Caine has been crafting award-winning catamarans for over 30 years. Their Leopard line is renowned for spacious layouts, excellent stability, and performance sailing. Custom-designed for charter with en-suite cabins, forward cockpits, and innovative galley configurations.</p>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Robertson &amp; Caine</div>
+      <div class="yacht-model">Leopard 40</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">40 ft</span>
+        <span class="yacht-spec">3 Cabins</span>
+        <span class="yacht-spec">6 Guests</span>
+        <span class="yacht-spec">2 Heads</span>
+      </div>
+      <div class="yacht-desc">Compact and nimble catamaran perfect for couples or small groups. Easy to handle with excellent maneuverability in tight anchorages. Forward cockpit for 360&deg; views.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Robertson &amp; Caine</div>
+      <div class="yacht-model">Leopard 42</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">42 ft</span>
+        <span class="yacht-spec">4 Cabins</span>
+        <span class="yacht-spec">8 Guests</span>
+        <span class="yacht-spec">4 Heads</span>
+      </div>
+      <div class="yacht-desc">The versatile mid-range cat with four private cabins, each with en-suite bathroom. Spacious saloon with panoramic windows and a well-equipped galley. A favorite for family charters.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Robertson &amp; Caine</div>
+      <div class="yacht-model">Leopard 46</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">46 ft</span>
+        <span class="yacht-spec">4 Cabins</span>
+        <span class="yacht-spec">8&ndash;10 Guests</span>
+        <span class="yacht-spec">4 Heads</span>
+        <span class="yacht-spec">A/C Available</span>
+      </div>
+      <div class="yacht-desc">Flagship sailing catamaran with generous beam and flybridge access. Outstanding deck space with forward lounge area. Generator-powered air conditioning and ample storage for extended cruising.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Robertson &amp; Caine</div>
+      <div class="yacht-model">Leopard 48</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">48 ft</span>
+        <span class="yacht-spec">4&ndash;5 Cabins</span>
+        <span class="yacht-spec">8&ndash;10 Guests</span>
+        <span class="yacht-spec">4&ndash;5 Heads</span>
+        <span class="yacht-spec">A/C</span>
+      </div>
+      <div class="yacht-desc">Award-winning design with exceptional sailing performance and luxurious accommodations. Features the signature Leopard forward cockpit and innovative living spaces. Available in 4 or 5 cabin layouts.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Robertson &amp; Caine</div>
+      <div class="yacht-model">Leopard 50</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">50 ft</span>
+        <span class="yacht-spec">5 Cabins</span>
+        <span class="yacht-spec">10&ndash;12 Guests</span>
+        <span class="yacht-spec">5 Heads</span>
+        <span class="yacht-spec">A/C</span>
+      </div>
+      <div class="yacht-desc">Spacious 50-footer designed for larger groups. Five private cabins each with en-suite heads. Expansive flybridge with seating and helm station. Full galley-up design with 360&deg; views from the saloon.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Robertson &amp; Caine</div>
+      <div class="yacht-model">Leopard 52</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">52 ft</span>
+        <span class="yacht-spec">5&ndash;6 Cabins</span>
+        <span class="yacht-spec">10&ndash;13 Guests</span>
+        <span class="yacht-spec">5&ndash;6 Heads</span>
+        <span class="yacht-spec">A/C</span>
+        <span class="yacht-spec">NEW 2025</span>
+      </div>
+      <div class="yacht-desc">The newest and largest sailing catamaran in the fleet. Designed by Felci Yachts with cutting-edge hull design for speed and comfort. Upper lounge area, massive flybridge, and premium finishes throughout. Ideal for crewed charters or experienced groups.</div>
+    </div>
+  </div>
+
+  <!-- ── MONOHULL SAILBOATS ── -->
+  <div class="yacht-section">
+    <div class="yacht-section-title">Monohull Sailboats <span class="yacht-type-badge badge-mono">MONOHULL</span></div>
+
+    <div class="yacht-mfr-info">
+      <h4>Dufour Yachts</h4>
+      <p>Built in La Rochelle, France. For over 60 years, Dufour has been crafting elegant cruising sailboats. Designed by Felci Yacht Design, every model features signature panoramic portholes, twin helms, wide side decks, and interiors that maximize natural light and living space. The new primary builder for charter monohulls worldwide.</p>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Dufour Yachts</div>
+      <div class="yacht-model">Dufour 37</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">37 ft</span>
+        <span class="yacht-spec">2&ndash;3 Cabins</span>
+        <span class="yacht-spec">4&ndash;6 Guests</span>
+        <span class="yacht-spec">1&ndash;2 Heads</span>
+      </div>
+      <div class="yacht-desc">The entry-level charter monohull that punches above its weight. Surprisingly roomy 3-cabin layout in a 37-foot hull. Deep single rudder for responsive handling and excellent upwind performance. Perfect for couples or small families.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Dufour Yachts</div>
+      <div class="yacht-model">Dufour 41</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">41 ft</span>
+        <span class="yacht-spec">3&ndash;4 Cabins</span>
+        <span class="yacht-spec">6&ndash;8 Guests</span>
+        <span class="yacht-spec">2&ndash;3 Heads</span>
+      </div>
+      <div class="yacht-desc">Mid-range cruiser with exceptional livability. Four cabins with en-suite heads in a 41-foot monohull is a rare achievement. Large broadside portholes flood the interior with light. Excellent sail handling characteristics.</div>
+    </div>
+
+    <div class="yacht-card">
+      <div class="yacht-mfr">Dufour Yachts</div>
+      <div class="yacht-model">Dufour 44</div>
+      <div class="yacht-specs">
+        <span class="yacht-spec">44 ft</span>
+        <span class="yacht-spec">4 Cabins</span>
+        <span class="yacht-spec">8&ndash;10 Guests</span>
+        <span class="yacht-spec">4 Heads</span>
+        <span class="yacht-spec">NEW 2025</span>
+      </div>
+      <div class="yacht-desc">The flagship of the Dufour charter range. Four en-suite cabins, spacious saloon-galley, twin helms, and impressive sail area. Felci Yacht Design created a hull that delivers both peak performance and cruising comfort. The most sought-after monohull in the fleet.</div>
+    </div>
+
+    <div class="yacht-mfr-info" style="margin-top:14px;border-left-color:var(--tn-sky, #3ba3d0);">
+      <h4 style="color:var(--tn-sky, #3ba3d0);">Legacy Fleet: B&eacute;n&eacute;teau &amp; Jeanneau</h4>
+      <p>Some charter bases also feature proven monohulls from French builders B&eacute;n&eacute;teau (Oceanis line) and Jeanneau (Sun Odyssey line), ranging from 38&ndash;51 feet. These classic designs offer decades of refinement in build quality, sailing performance, and onboard comfort. Available in 2&ndash;4 cabin configurations.</p>
+    </div>
+  </div>
+
+  <!-- Charter Destinations -->
+  <div style="margin-top:8px;padding:12px;background:rgba(212,168,67,0.08);border-radius:10px;">
+    <div style="color:var(--tn-gold, #d4a843);font-family:var(--font-display, 'Playfair Display', Georgia, serif);font-size:15px;margin-bottom:6px;text-align:center;">Charter Destinations</div>
+    <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);line-height:1.6;text-align:center;">
+      <strong style="color:var(--tn-sky, #3ba3d0)">Caribbean:</strong> British Virgin Islands, St. Lucia, Grenada, St. Martin, Antigua<br>
+      <strong style="color:var(--tn-sky, #3ba3d0)">Americas:</strong> Bahamas (Abacos &amp; Exumas), Belize, Mexico<br>
+      <strong style="color:var(--tn-sky, #3ba3d0)">Mediterranean:</strong> Croatia, Greece, Italy, Turkey<br>
+      <strong style="color:var(--tn-sky, #3ba3d0)">Exotics:</strong> Thailand, Tahiti, Seychelles
+    </div>
+    <div style="text-align:center;margin-top:10px;">
+      <a href="https://sailtruenorth.com/caribbean-sailing/" target="_blank" class="footer-register">Live Your Ocean Dreams with True North &rarr;</a>
+    </div>
+  </div>
+
+  <div class="app-footer">
+    <a href="https://sailtruenorth.com" target="_blank">sailtruenorth.com</a> &bull; <a href="tel:+19084890589">(908) 489-0589</a><br>
+    <a href="https://maps.apple.com/?q=Liberty+Landing+Marina+Jersey+City+NJ" target="_blank">Liberty Landing Marina, Jersey City, NJ</a><br>
+    Contact True North Sailing for charter availability &amp; pricing
+  </div>
+</div>
+
+<!-- Waypoint Modal -->
+<div class="modal-overlay" id="waypointModal">
+  <div class="modal">
+    <h2>📌 Add Waypoint</h2>
+    <div class="input-group" style="margin-bottom:12px;"><label>Waypoint Name</label><input type="text" id="wpName" placeholder="e.g. Green Buoy #4"></div>
+    <div class="input-group" style="margin-bottom:16px;"><label>Notes</label><textarea id="wpNotes" placeholder="Wind shifted, tacked to starboard..."></textarea></div>
+    <div class="btn-group">
+      <button class="btn btn-outline btn-sm" onclick="closeWaypointModal()" style="flex:1">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="addWaypoint()" style="flex:1">Save Waypoint</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  TRUE NORTH SAILING — HELMLOG v2.0
+// ═══════════════════════════════════════════════
+
+var trackData = { tripName: '', startTime: null, entries: [] };
+var isTracking = false;
+var trackingTimer = null;
+var autoInterval = 900;
+var autoLogEnabled = true;
+var watchId = null;
+var currentPos = null;
+var map = null;
+var trackLine = null;
+var markerGroup = null;
+var presetGroup = null;
+var showLine = true;
+var liveWeather = { windSpeed:null, windDir:null, windDirLabel:null, gusts:null, conditions:null, conditionsIcon:null, temp:null, humidity:null, pressure:null };
+var weatherFetched = false;
+var presetsVisible = false;
+
+// Pre-loaded NY Harbor Waypoints
+var PRESETS = [
+  { name: 'Liberty Landing Marina', lat: 40.6934, lng: -74.0522, desc: 'True North Sailing School home base' },
+  { name: 'Statue of Liberty', lat: 40.6892, lng: -74.0445, desc: 'Iconic landmark, restricted zone' },
+  { name: 'Ellis Island', lat: 40.6995, lng: -74.0399, desc: 'North of Liberty Island' },
+  { name: 'Robbins Reef Light', lat: 40.6574, lng: -74.0651, desc: 'Historic lighthouse, Upper Bay' },
+  { name: 'Bay Ridge Flats', lat: 40.6348, lng: -74.0398, desc: 'Shallow area marker, The Narrows approach' },
+  { name: 'Governors Island', lat: 40.6895, lng: -74.0168, desc: 'East of Liberty Island' },
+  { name: 'Red Hook Channel', lat: 40.6728, lng: -74.0178, desc: 'Brooklyn waterfront channel' },
+  { name: 'Kill Van Kull Entrance', lat: 40.6438, lng: -74.0773, desc: 'Passage to Newark Bay' },
+  { name: 'Verrazano Bridge', lat: 40.6064, lng: -74.0447, desc: 'Harbor entrance, The Narrows' },
+  { name: 'Ambrose Channel', lat: 40.5275, lng: -73.8872, desc: 'Main shipping channel to open ocean' },
+  { name: 'Sandy Hook', lat: 40.4672, lng: -74.0030, desc: 'Hook at entrance to Lower Bay' },
+  { name: 'Coney Island', lat: 40.5755, lng: -73.9707, desc: 'Southern Brooklyn coastline' }
+];
+
+// ── Tabs ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) {
+    var txt = t.textContent.trim().toLowerCase();
+    t.classList.toggle('active', txt.indexOf(name) >= 0);
+  });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'map') { setTimeout(function() { if (!map) initMap(); else map.invalidateSize(); renderMap(); }, 100); }
+  if (name === 'log') renderLog();
+  if (name === 'data') { updateStats(); var fi=document.getElementById('saveFilename'); if(!fi.value.trim()) fi.value=getDefaultFilename(); }
+}
+
+// ── Clock ──
+function updateClock() {
+  var now = new Date();
+  var el = document.getElementById('liveTime');
+  if (el) el.textContent = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '  ' + now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ── GPS ──
+function startGPS() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported'); return; }
+  watchId = navigator.geolocation.watchPosition(function(pos) {
+    currentPos = { lat:pos.coords.latitude, lng:pos.coords.longitude, speed:pos.coords.speed, heading:pos.coords.heading, accuracy:pos.coords.accuracy };
+    updateLiveDisplay();
+    if (!weatherFetched) { weatherFetched = true; fetchWeather(currentPos.lat, currentPos.lng); setInterval(function(){ if(currentPos) fetchWeather(currentPos.lat,currentPos.lng); }, 600000); }
+  }, function(err) { showToast('GPS: ' + err.message); }, { enableHighAccuracy:true, maximumAge:5000, timeout:15000 });
+}
+function stopGPS() { if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; } }
+function updateLiveDisplay() {
+  if (!currentPos) return;
+  document.getElementById('liveLat').textContent = currentPos.lat.toFixed(6);
+  document.getElementById('liveLng').textContent = currentPos.lng.toFixed(6);
+  document.getElementById('liveSpeed').innerHTML = ((currentPos.speed != null && currentPos.speed >= 0) ? (currentPos.speed * 1.94384).toFixed(1) : '\u2014') + ' <small>kts</small>';
+  document.getElementById('liveHeading').innerHTML = (currentPos.heading != null ? Math.round(currentPos.heading) : '\u2014') + '\u00b0';
+}
+
+// ── Weather ──
+function fetchWeather(lat, lng) {
+  document.getElementById('wxStatus').textContent = 'Fetching...';
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&current=temperature_2m,relative_humidity_2m,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kn&temperature_unit=fahrenheit&timezone=auto';
+  fetch(url).then(function(r){return r.json()}).then(function(data) {
+    if (!data.current) return;
+    var c = data.current;
+    liveWeather.windSpeed = Math.round(c.wind_speed_10m);
+    liveWeather.windDir = c.wind_direction_10m;
+    liveWeather.windDirLabel = degToCompass(c.wind_direction_10m);
+    liveWeather.gusts = c.wind_gusts_10m ? Math.round(c.wind_gusts_10m) : null;
+    liveWeather.temp = Math.round(c.temperature_2m);
+    liveWeather.humidity = c.relative_humidity_2m;
+    liveWeather.pressure = Math.round(c.pressure_msl);
+    var wx = wxCode(c.weather_code);
+    liveWeather.conditions = wx.desc;
+    document.getElementById('liveWind').innerHTML = liveWeather.windSpeed + ' <small>kts</small>';
+    document.getElementById('liveWindDir').textContent = liveWeather.windDirLabel + ' (' + Math.round(liveWeather.windDir) + '\u00b0)';
+    document.getElementById('windArrow').style.transform = 'translate(-50%,-100%) rotate(' + liveWeather.windDir + 'deg)';
+    document.getElementById('liveGust').textContent = liveWeather.gusts ? 'Gusts: ' + liveWeather.gusts + ' kts' : '';
+    document.getElementById('wxIcon').textContent = wx.icon;
+    document.getElementById('wxDesc').textContent = wx.desc;
+    document.getElementById('wxTemp').textContent = liveWeather.temp + '\u00b0F';
+    document.getElementById('wxHumid').textContent = liveWeather.humidity + '%';
+    document.getElementById('wxPressure').textContent = liveWeather.pressure + ' mb';
+    document.getElementById('wxStatus').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }).catch(function(){ document.getElementById('wxStatus').textContent = 'Weather fetch failed'; });
+}
+function getCurrentWeather() {
+  var wo = parseFloat(document.getElementById('inputWindOverride').value);
+  return { windSpeed: !isNaN(wo) ? wo : liveWeather.windSpeed, windDirection: liveWeather.windDir, windDirLabel: liveWeather.windDirLabel, gusts: liveWeather.gusts, conditions: liveWeather.conditions, temp: liveWeather.temp, humidity: liveWeather.humidity, pressure: liveWeather.pressure, seaState: document.getElementById('inputSeaState').value || null };
+}
+
+// ── Tracking ──
+function toggleTracking() { if (isTracking) stopTracking(); else startTracking(); }
+function startTracking() {
+  isTracking = true;
+  trackData.startTime = trackData.startTime || new Date().toISOString();
+  document.getElementById('btnStartStop').innerHTML = '⏹ Stop Tracking';
+  document.getElementById('btnStartStop').className = 'btn btn-red';
+  document.getElementById('statusDot').classList.add('active');
+  document.getElementById('trackingLabel').textContent = 'Tracking';
+  startGPS();
+  if (autoLogEnabled) {
+    setTimeout(function(){ logEntry('auto'); }, 1500);
+    trackingTimer = setInterval(function(){ logEntry('auto'); }, autoInterval * 1000);
+  }
+  showToast(autoLogEnabled ? 'Tracking (' + (autoInterval/60) + 'min auto-log)' : 'Tracking (manual only)');
+}
+function stopTracking() {
+  isTracking = false; if(trackingTimer) clearInterval(trackingTimer); trackingTimer = null; stopGPS();
+  document.getElementById('btnStartStop').innerHTML = '▶ Start Tracking';
+  document.getElementById('btnStartStop').className = 'btn btn-ocean';
+  document.getElementById('statusDot').classList.remove('active');
+  document.getElementById('trackingLabel').textContent = 'Idle';
+  showToast('Tracking stopped');
+}
+function setLogInterval(s) {
+  autoInterval = s;
+  document.querySelectorAll('.ibtn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.getAttribute('onclick').match(/\d+/)[0])===s);
+  });
+  if (isTracking && autoLogEnabled) { clearInterval(trackingTimer); trackingTimer = setInterval(function(){ logEntry('auto'); }, s*1000); }
+  saveSettings();
+}
+function toggleAutoLog() {
+  autoLogEnabled = document.getElementById('autoLogToggle').checked;
+  document.getElementById('intervalSel').classList.toggle('disabled', !autoLogEnabled);
+  if (isTracking) {
+    if (autoLogEnabled) {
+      trackingTimer = setInterval(function(){ logEntry('auto'); }, autoInterval * 1000);
+      showToast('Auto-log ON (' + (autoInterval/60) + 'min)');
+    } else {
+      clearInterval(trackingTimer); trackingTimer = null;
+      showToast('Auto-log OFF \u2014 manual waypoints only');
+    }
+  }
+  saveSettings();
+}
+function saveSettings() {
+  try { localStorage.setItem('helmlog_settings', JSON.stringify({ autoInterval: autoInterval, autoLogEnabled: autoLogEnabled })); } catch(e) {}
+}
+function loadSettings() {
+  try {
+    var s = localStorage.getItem('helmlog_settings');
+    if (s) {
+      var cfg = JSON.parse(s);
+      if (cfg.autoInterval) { autoInterval = cfg.autoInterval; }
+      if (typeof cfg.autoLogEnabled === 'boolean') { autoLogEnabled = cfg.autoLogEnabled; }
+    }
+  } catch(e) {}
+  document.getElementById('autoLogToggle').checked = autoLogEnabled;
+  document.getElementById('intervalSel').classList.toggle('disabled', !autoLogEnabled);
+  document.querySelectorAll('.ibtn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.getAttribute('onclick').match(/\d+/)[0])===autoInterval);
+  });
+}
+
+function logEntry(type, name, notes) {
+  var w = getCurrentWeather();
+  trackData.entries.push({ id: Date.now().toString(36)+Math.random().toString(36).substr(2,5), type:type, timestamp:new Date().toISOString(), position:currentPos?{lat:currentPos.lat,lng:currentPos.lng,accuracy:currentPos.accuracy}:null, speed:(currentPos&&currentPos.speed!=null)?+(currentPos.speed*1.94384).toFixed(2):null, heading:(currentPos&&currentPos.heading!=null)?Math.round(currentPos.heading):null, weather:w, name:name||'', notes:notes||'' });
+  saveLS();
+}
+
+// ── Waypoint ──
+function openWaypointModal() { document.getElementById('waypointModal').classList.add('active'); document.getElementById('wpName').value=''; document.getElementById('wpNotes').value=''; document.getElementById('wpName').focus(); }
+function closeWaypointModal() { document.getElementById('waypointModal').classList.remove('active'); }
+function addWaypoint() {
+  var n = document.getElementById('wpName').value.trim()||'Waypoint', t = document.getElementById('wpNotes').value.trim();
+  if (!currentPos) { navigator.geolocation.getCurrentPosition(function(p){ currentPos={lat:p.coords.latitude,lng:p.coords.longitude,speed:p.coords.speed,heading:p.coords.heading,accuracy:p.coords.accuracy}; updateLiveDisplay(); logEntry('waypoint',n,t); closeWaypointModal(); showToast('📌 '+n); },function(){ logEntry('waypoint',n,t); closeWaypointModal(); showToast('📌 Added (no GPS)'); },{enableHighAccuracy:true,timeout:10000}); }
+  else { logEntry('waypoint',n,t); closeWaypointModal(); showToast('📌 '+n); }
+}
+
+// ── Log ──
+function renderLog() {
+  var c = document.getElementById('logList');
+  if (!trackData.entries.length) { c.innerHTML='<div class="empty"><div class="eicon">📋</div><p>No entries yet. Start tracking.</p></div>'; return; }
+  var h='', arr=trackData.entries.slice().reverse();
+  for(var i=0;i<arr.length;i++){var e=arr[i],tm=new Date(e.timestamp),ts=tm.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ds=tm.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),wp=e.type==='waypoint',co=e.position?e.position.lat.toFixed(5)+', '+e.position.lng.toFixed(5):'No pos',wb=[];
+  if(e.weather&&e.weather.windSpeed!=null)wb.push('\ud83d\udca8 '+e.weather.windSpeed+'kts '+(e.weather.windDirLabel||''));if(e.weather&&e.weather.conditions)wb.push(e.weather.conditions);if(e.weather&&e.weather.temp!=null)wb.push(e.weather.temp+'\u00b0F');if(e.weather&&e.weather.seaState)wb.push('Sea: '+e.weather.seaState);if(e.speed!=null)wb.push('SOG: '+e.speed+'kts');
+  h+='<div class="log-entry'+(wp?' waypoint':'')+'"><div class="le-head"><span class="le-time">'+ts+' \u00b7 '+ds+'</span><span class="le-badge '+(wp?'badge-wp':'badge-auto')+'">'+(wp?'\ud83d\udccc '+(e.name||'WP'):'Auto')+'</span></div><div class="le-coords">'+co+'</div>';
+  if(wb.length){h+='<div class="le-wx">';for(var j=0;j<wb.length;j++)h+='<span>'+wb[j]+'</span>';h+='</div>';}
+  if(e.notes)h+='<div class="le-note">"'+e.notes+'"</div>';h+='</div>';}
+  c.innerHTML=h;
+}
+
+// ── Map ──
+function initMap() {
+  if (typeof L === 'undefined') { showToast('Map loading... check internet'); return; }
+  try {
+  map = L.map('map',{zoomControl:true}).setView([40.6934,-74.0522],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'\u00a9 OpenStreetMap',maxZoom:19}).addTo(map);
+  markerGroup = L.layerGroup().addTo(map);
+  presetGroup = L.layerGroup();
+  } catch(e) { showToast('Map error - check internet'); }
+}
+function renderMap() {
+  if(!map)return; markerGroup.clearLayers();
+  if(trackLine){map.removeLayer(trackLine);trackLine=null;}
+  var ent=trackData.entries.filter(function(e){return e.position;});if(!ent.length)return;
+  var co=ent.map(function(e){return[e.position.lat,e.position.lng];});
+  if(showLine&&co.length>1) trackLine=L.polyline(co,{color:'#d4a843',weight:3,opacity:0.8,dashArray:'8,6'}).addTo(map);
+  ent.forEach(function(e,i){var wp=e.type==='waypoint',ic=L.divIcon({className:wp?'waypoint-marker':'auto-marker',iconSize:wp?[14,14]:[10,10]}),tm=new Date(e.timestamp).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),pp='<strong>'+(wp?'\ud83d\udccc '+(e.name||'WP'):'#'+(i+1))+'</strong><br><span style="color:#3ba3d0">'+tm+'</span><br>'+e.position.lat.toFixed(5)+', '+e.position.lng.toFixed(5);if(e.speed!=null)pp+='<br>SOG: '+e.speed+' kts';if(e.weather&&e.weather.windSpeed!=null)pp+='<br>Wind: '+e.weather.windSpeed+'kts '+(e.weather.windDirLabel||'');if(e.notes)pp+='<br><em style="color:#d4a843">"'+e.notes+'"</em>';
+  L.marker([e.position.lat,e.position.lng],{icon:ic}).bindPopup(pp).addTo(markerGroup);});
+  if(co.length)map.fitBounds(L.latLngBounds(co).pad(0.15));
+}
+function fitMapToTrack(){var e=trackData.entries.filter(function(x){return x.position;});if(!e.length){showToast('No data');return;}map.fitBounds(L.latLngBounds(e.map(function(x){return[x.position.lat,x.position.lng];})).pad(0.15));}
+function toggleTrackLine(){showLine=!showLine;renderMap();}
+function centerOnMe(){if(currentPos)map.setView([currentPos.lat,currentPos.lng],15);else navigator.geolocation.getCurrentPosition(function(p){map.setView([p.coords.latitude,p.coords.longitude],15);},function(){showToast('No position');});}
+function showPresetWaypoints(){
+  if(!map)return;
+  presetsVisible=!presetsVisible;
+  if(presetsVisible){
+    presetGroup.clearLayers();
+    PRESETS.forEach(function(p){var ic=L.divIcon({className:'preset-marker',iconSize:[12,12]});L.marker([p.lat,p.lng],{icon:ic}).bindPopup('<strong>\u2693 '+p.name+'</strong><br><span style="color:#3aaa7a">'+p.desc+'</span><br><span style="font-size:10px;color:#7fc8e8">'+p.lat.toFixed(4)+', '+p.lng.toFixed(4)+'</span>').addTo(presetGroup);});
+    presetGroup.addTo(map);
+    map.fitBounds(L.latLngBounds(PRESETS.map(function(p){return[p.lat,p.lng];})).pad(0.15));
+    showToast('Harbor marks shown');
+  } else { map.removeLayer(presetGroup); showToast('Harbor marks hidden'); }
+}
+
+// ── Stats ──
+function updateStats(){var e=trackData.entries,wp=e.filter(function(x){return x.position;}),w=e.filter(function(x){return x.type==='waypoint';});document.getElementById('statPoints').textContent=e.length;document.getElementById('statWaypoints').textContent=w.length;var d=0;for(var i=1;i<wp.length;i++)d+=hvNM(wp[i-1].position.lat,wp[i-1].position.lng,wp[i].position.lat,wp[i].position.lng);document.getElementById('statDistance').textContent=d.toFixed(2);if(e.length>=2){var ms=new Date(e[e.length-1].timestamp)-new Date(e[0].timestamp),h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);document.getElementById('statDuration').textContent=h+':'+(m<10?'0':'')+m;}var sp=[];for(var j=0;j<e.length;j++)if(e[j].speed!=null)sp.push(e[j].speed);if(sp.length){var s=0;for(var k=0;k<sp.length;k++)s+=sp[k];document.getElementById('statAvgSpeed').textContent=(s/sp.length).toFixed(1);document.getElementById('statMaxSpeed').textContent=Math.max.apply(null,sp).toFixed(1);}}
+function hvNM(a,b,c,d){var R=3440.065,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180,x=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)*Math.sin(dN/2);return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+
+// ── Save/Load ──
+function saveLS(){try{localStorage.setItem('helmlog_data',JSON.stringify(trackData));}catch(e){}}
+function loadLS(){try{var d=localStorage.getItem('helmlog_data');if(d)trackData=JSON.parse(d);}catch(e){}}
+function getDefaultFilename(){var d=new Date();return 'helmlog_'+d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+'_'+('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2);}
+function getSaveFilename(ext){var el=document.getElementById('saveFilename');if(!el.value.trim())el.value=getDefaultFilename();var n=el.value.trim();if(n.endsWith('.json')||n.endsWith('.csv'))n=n.replace(/\.(json|csv)$/,'');return n+ext;}
+function saveToJSON(){var fn=getSaveFilename('.json');var b=new Blob([JSON.stringify(trackData,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=fn;a.click();URL.revokeObjectURL(u);showToast('Saved: '+fn);}
+function loadFromJSON(ev){var f=ev.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(d.entries){trackData=d;saveLS();showToast('Loaded '+d.entries.length+' entries');renderLog();updateStats();if(map)renderMap();}}catch(er){showToast('Error');}};r.readAsText(f);ev.target.value='';}
+function exportCSV(){if(!trackData.entries.length){showToast('No data');return;}var csv='Timestamp,Type,Name,Lat,Lng,Speed,Heading,Wind,WindDir,Gusts,Conditions,Temp,Humidity,Pressure,SeaState,Notes\n';for(var i=0;i<trackData.entries.length;i++){var e=trackData.entries[i],w=e.weather||{};csv+=[e.timestamp,e.type,'"'+(e.name||'')+'"',e.position?e.position.lat:'',e.position?e.position.lng:'',e.speed!=null?e.speed:'',e.heading!=null?e.heading:'',w.windSpeed!=null?w.windSpeed:'',w.windDirection!=null?w.windDirection:'',w.gusts!=null?w.gusts:'',w.conditions||'',w.temp!=null?w.temp:'',w.humidity!=null?w.humidity:'',w.pressure!=null?w.pressure:'',w.seaState||'','"'+(e.notes||'')+'"'].join(',')+'\n';}var b=new Blob([csv],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=getSaveFilename('.csv');a.click();URL.revokeObjectURL(u);showToast('Exported: '+getSaveFilename('.csv'));}
+function clearAllData(){if(!confirm('Clear all data?'))return;if(isTracking)stopTracking();trackData={tripName:'',startTime:null,entries:[]};saveLS();renderLog();updateStats();if(map)renderMap();showToast('Cleared');}
+
+// ── Learn: Accordion ──
+function toggleRef(el){var b=el.nextElementSibling,a=el.querySelector('.arrow-toggle');b.classList.toggle('open');a.classList.toggle('open');}
+function toggleKnot(el){var b=el.nextElementSibling,a=el.querySelector('.arrow-toggle');b.classList.toggle('open');a.classList.toggle('open');}
+
+// ── Knot Animation Engine ──
+var KNOTS = {
+  bowline: {
+    step: 0, total: 5,
+    ids: [
+      ['bow-s0','bow-t0a','bow-t0b'],
+      ['bow-s1a','bow-s1b','bow-hole1','bow-t1'],
+      ['bow-s2a','bow-s2b','bow-tip2','bow-t2'],
+      ['bow-s3a','bow-s3tree','bow-s3b','bow-tip3','bow-t3a','bow-t3b'],
+      ['bow-s4a','bow-s4tree','bow-s4b','bow-loopind','bow-t4a','bow-t4b','bow-t4c']
+    ],
+    text: [
+      'Start with a line. The left side is the standing part (under load). The right is the working end.',
+      'Form a small loop in the standing part \u2014 this is the \u201Chole.\u201D The working end crosses OVER to create it.',
+      'The rabbit comes UP through the hole \u2014 pass the working end up through the loop from below.',
+      'Around the tree \u2014 the working end passes BEHIND the standing part (the vertical \u201Ctree\u201D).',
+      'Back down the hole \u2014 the working end goes back through the loop the same way it came up. Pull both ends to set! \u2714'
+    ]
+  },
+  cleat: {
+    step: 0, total: 5,
+    ids: [
+      ['clt-s0','clt-t0'],
+      ['clt-s1a','clt-s1b','clt-t1'],
+      ['clt-s2a','clt-s2b','clt-t2'],
+      ['clt-s3a','clt-s3b','clt-t3'],
+      ['clt-s4a','clt-s4b','clt-lock','clt-t4']
+    ],
+    text: [
+      'Bring the line toward the cleat from the load side.',
+      'Wrap the line around the FAR horn of the cleat first. This takes the initial load and prevents slipping.',
+      'Cross diagonally to make the first figure-8 across the cleat horns.',
+      'Cross back the other way for the second figure-8. The line should make an X pattern over the cleat.',
+      'Form an underhand loop, flip it over, and drop it on the horn \u2014 that\u2019s the locking hitch! Never more than one! \u2714'
+    ]
+  },
+  fig8: {
+    step: 0, total: 4,
+    ids: [
+      ['f8-s0','f8-t0a','f8-t0b'],
+      ['f8-s1a','f8-s1b','f8-t1'],
+      ['f8-s2a','f8-s2b','f8-t2'],
+      ['f8-s3a','f8-s3b','f8-end','f8-t3']
+    ],
+    text: [
+      'Start with a straight line. You\u2019ll tie the stopper knot near the working end.',
+      'Make a loop by passing the working end OVER the standing part, creating a crossing.',
+      'Continue the working end UNDER the standing part \u2014 it now goes behind the line.',
+      'Thread the working end back through the original loop from top to bottom. Pull both ends to tighten! \u2714'
+    ]
+  },
+  rt2hh: {
+    step: 0, total: 4,
+    ids: [
+      ['rt-s0','rt-t0'],
+      ['rt-s1a','rt-s1b','rt-t1','rt-t1b'],
+      ['rt-s2a','rt-s2b','rt-t2'],
+      ['rt-s3a','rt-s3b','rt-end','rt-t3']
+    ],
+    text: [
+      'Bring the line toward the post. The left side carries the load.',
+      'Wrap the line completely around the post TWICE. This is the round turn \u2014 it absorbs all the load, making the hitches easy to tie.',
+      'First half hitch: pass the working end OVER then UNDER the standing part. Pull snug against the post.',
+      'Second half hitch: same direction as the first. Pull tight \u2014 both hitches lock the round turn in place! \u2714'
+    ]
+  },
+  clove: {
+    step: 0, total: 4,
+    ids: [
+      ['cv-s0','cv-t0'],
+      ['cv-s1a','cv-s1b','cv-t1'],
+      ['cv-s2a','cv-s2b','cv-t2'],
+      ['cv-s3a','cv-s3b','cv-end','cv-t3','cv-warn']
+    ],
+    text: [
+      'Bring the line toward the post from the load side.',
+      'Pass the line over and around the post once, coming back toward you.',
+      'Cross OVER the standing part and wrap around the post a second time in the same direction.',
+      'Tuck the working end under the second crossing to lock it. Pull tight! \u26A0 This knot can slip \u2014 use only as a temporary tie.'
+    ]
+  },
+  sheet: {
+    step: 0, total: 4,
+    ids: [
+      ['sh-s0a','sh-s0b','sh-t0a','sh-t0b'],
+      ['sh-s1','sh-t1'],
+      ['sh-s2a','sh-s2b','sh-tip2','sh-t2'],
+      ['sh-s3a','sh-s3b','sh-end','sh-t3']
+    ],
+    text: [
+      'Start with two lines of different thickness. The blue line is thicker, the gold line is thinner.',
+      'Form a bight (U-shape) in the thicker line and hold it open.',
+      'Pass the thinner line UP through the bight from underneath.',
+      'Wrap the thin line around BOTH legs of the bight, then tuck it under itself (but over the bight). Pull all four ends! \u2714'
+    ]
+  },
+  reef: {
+    step: 0, total: 3,
+    ids: [
+      ['rf-s0a','rf-s0b','rf-t0a','rf-t0b'],
+      ['rf-s1a','rf-s1b','rf-t1'],
+      ['rf-s2a','rf-s2b','rf-t2','rf-warn']
+    ],
+    text: [
+      'Start with two ends of the same line. Blue is the right end, gold is the left end.',
+      'Right over left, and tuck under \u2014 this forms the first half of the knot.',
+      'Left over right, and tuck under. Pull evenly \u2014 it must lay flat and symmetrical. If it capsizes, you tied a granny knot! \u2714'
+    ]
+  },
+  anchor: {
+    step: 0, total: 4,
+    ids: [
+      ['an-s0','an-t0'],
+      ['an-s1a','an-s1b','an-t1','an-t1b'],
+      ['an-s2a','an-s2b','an-t2','an-t2b'],
+      ['an-s3a','an-s3b','an-end','an-t3']
+    ],
+    text: [
+      'Bring the anchor line toward the anchor ring from the boat.',
+      'Pass the line through the ring TWICE to form a round turn. This grips even when wet and slimy.',
+      'The key difference: tuck the working end through BOTH turns of the round turn. This locks it to the ring much more securely.',
+      'Finish with a half hitch around the standing part for extra security. Bombproof even in heavy weather! \u2714'
+    ]
+  }
+};
+
+function knotStep(id, dir) {
+  var k = KNOTS[id];
+  if (!k) return;
+  if (dir === 0) { k.step = 0; }
+  else if (dir === 1) { if (k.step < k.total - 1) k.step++; }
+  else { if (k.step > 0) k.step--; }
+  renderKnotStep(id);
+}
+
+function renderKnotStep(id) {
+  var k = KNOTS[id];
+  // Hide all paths for this knot
+  for (var i = 0; i < k.ids.length; i++) {
+    for (var j = 0; j < k.ids[i].length; j++) {
+      var el = document.getElementById(k.ids[i][j]);
+      if (el) {
+        if (i === k.step) {
+          el.style.opacity = '1';
+          // Animate drawing with stroke-dashoffset
+          if (el.tagName === 'path' || el.tagName === 'PATH') {
+            var len = 0;
+            try { len = el.getTotalLength(); } catch(e) { len = 500; }
+            if (len > 0) {
+              el.style.strokeDasharray = len + '';
+              el.style.strokeDashoffset = len + '';
+              el.getBoundingClientRect(); // force reflow
+              el.style.transition = 'stroke-dashoffset 0.8s ease, opacity 0.3s ease';
+              el.style.strokeDashoffset = '0';
+            }
+          }
+        } else {
+          el.style.opacity = '0';
+          el.style.transition = 'opacity 0.3s ease';
+          if (el.tagName === 'path' || el.tagName === 'PATH') {
+            el.style.strokeDasharray = 'none';
+            el.style.strokeDashoffset = '0';
+          }
+        }
+      }
+    }
+  }
+  // Update text
+  var txt = document.getElementById('knot-' + id + '-text');
+  if (txt) txt.innerHTML = '<span class="step-label">STEP ' + (k.step + 1) + ' of ' + k.total + '</span>' + k.text[k.step];
+  // Update dots
+  var dots = document.getElementById('knot-' + id + '-dots');
+  if (dots) {
+    var dh = '';
+    for (var d = 0; d < k.total; d++) {
+      var cls = 'knot-dot';
+      if (d === k.step) cls += ' active';
+      else if (d < k.step) cls += ' done';
+      dh += '<div class="' + cls + '"></div>';
+    }
+    dots.innerHTML = dh;
+  }
+}
+
+// Initialize all knots to step 0
+function initKnots() {
+  var keys = ['bowline','cleat','fig8','rt2hh','clove','sheet','reef','anchor'];
+  for (var i = 0; i < keys.length; i++) {
+    KNOTS[keys[i]].step = 0;
+    renderKnotStep(keys[i]);
+  }
+}
+
+
+// ── Preset waypoint list in Learn tab ──
+function buildPresetList(){var c=document.getElementById('presetWPList'),h='';
+for(var i=0;i<PRESETS.length;i++){var p=PRESETS[i];h+='<div class="wp-item" onclick="goToPreset('+i+')"><div class="wp-info"><div class="wp-name">\u2693 '+p.name+'</div><div class="wp-pos">'+p.lat.toFixed(4)+', '+p.lng.toFixed(4)+' &mdash; '+p.desc+'</div></div><div class="wp-go">\u25b6</div></div>';}
+c.innerHTML=h;}
+function goToPreset(i){switchTab('map');setTimeout(function(){if(!map)initMap();map.setView([PRESETS[i].lat,PRESETS[i].lng],15);if(!presetsVisible)showPresetWaypoints();},200);}
+
+// ── Helpers ──
+function degToCompass(d){var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];return dirs[Math.round(d/22.5)%16];}
+function wxCode(c){var m={0:{icon:'\u2600\ufe0f',desc:'Clear'},1:{icon:'\ud83c\udf24',desc:'Mostly Clear'},2:{icon:'\u26c5',desc:'Partly Cloudy'},3:{icon:'\u2601\ufe0f',desc:'Overcast'},45:{icon:'\ud83c\udf2b\ufe0f',desc:'Fog'},48:{icon:'\ud83c\udf2b\ufe0f',desc:'Rime Fog'},51:{icon:'\ud83c\udf26',desc:'Light Drizzle'},53:{icon:'\ud83c\udf26',desc:'Drizzle'},55:{icon:'\ud83c\udf26',desc:'Heavy Drizzle'},61:{icon:'\ud83c\udf27\ufe0f',desc:'Light Rain'},63:{icon:'\ud83c\udf27\ufe0f',desc:'Rain'},65:{icon:'\ud83c\udf27\ufe0f',desc:'Heavy Rain'},80:{icon:'\ud83c\udf26',desc:'Showers'},81:{icon:'\ud83c\udf27\ufe0f',desc:'Mod Showers'},82:{icon:'\u26c8\ufe0f',desc:'Heavy Showers'},95:{icon:'\u26a1',desc:'Thunderstorm'},96:{icon:'\u26a1',desc:'T-Storm+Hail'},99:{icon:'\u26a1',desc:'Severe T-Storm'}};return m[c]||{icon:'\u2753',desc:'Code '+c};}
+function showToast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},2500);}
+
+// ── Init ──
+window.onerror = function(msg, url, line) { console.log('JS Error: ' + msg + ' line ' + line); return false; };
+try { loadLS(); loadSettings(); renderLog(); buildPresetList(); initKnots(); } catch(e) { console.log('Init error: ' + e); }
+if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(p){try{currentPos={lat:p.coords.latitude,lng:p.coords.longitude,speed:p.coords.speed,heading:p.coords.heading,accuracy:p.coords.accuracy};updateLiveDisplay();if(!weatherFetched){weatherFetched=true;fetchWeather(currentPos.lat,currentPos.lng);setInterval(function(){if(currentPos)fetchWeather(currentPos.lat,currentPos.lng);},600000);}}catch(e){console.log('GPS init error: '+e);}},function(){try{document.getElementById('wxStatus').textContent='GPS unavailable - enable Location Services';}catch(e){}},{enableHighAccuracy:true,timeout:15000});}
+</script>
+</body>
+</html>
