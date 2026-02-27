@@ -296,14 +296,15 @@
   .fc-wind { font-size:10px; color:var(--tn-pale, #c5e4f3); margin-top:2px; }
   .fc-desc { font-size:9px; color:var(--tn-pale, #c5e4f3); margin-top:2px; }
 
-  .override-row {
-    display:flex; gap:10px; margin-top:10px; padding-top:10px;
-    border-top:1px solid var(--tn-steel, #1e4d7a);
-  }
-  .override-row .input-group { flex:1; }
-  .override-row label { font-size:10px; color:var(--tn-pale, #c5e4f3); margin-bottom:3px; display:block; }
-  .override-row select, .override-row input {
-    width:100%; padding:6px 8px; border-radius:6px; font-size:12px;
+  /* ── Wind Layout ── */
+  .wind-data { flex:1; }
+  .wind-speed-row { display:flex; gap:12px; align-items:flex-start; }
+  .wind-overrides { min-width:100px; }
+  .wind-overrides .input-group { margin-bottom:6px; }
+  .wind-overrides .input-group:last-child { margin-bottom:0; }
+  .wind-overrides label { font-size:10px; color:var(--tn-pale, #c5e4f3); margin-bottom:3px; display:block; }
+  .wind-overrides select, .wind-overrides input {
+    width:100%; padding:5px 6px; border-radius:6px; font-size:12px;
     border:1px solid var(--tn-steel, #1e4d7a);
     background:var(--tn-navy, #0b1d33); color:var(--tn-white, #f0f7fb);
     font-family:var(--font-mono, 'JetBrains Mono', monospace);
@@ -754,28 +755,32 @@
     <div class="live-card"><div class="lbl">Speed</div><div class="val" id="liveSpeed">&mdash; <small>kts</small></div></div>
     <div class="live-card"><div class="lbl">Heading</div><div class="val" id="liveHeading">&mdash;&deg;</div></div>
     <div class="live-card full">
-      <div class="lbl">Wind (Live)</div>
+      <div class="lbl">Wind</div>
       <div class="wind-wrap">
         <div class="compass">
           <span class="c n">N</span><span class="c s">S</span><span class="c e">E</span><span class="c w">W</span>
           <div class="arrow" id="windArrow"></div><div class="compass-dot"></div>
         </div>
-        <div>
-          <div class="val" id="liveWind">&mdash; <small>kts</small></div>
-          <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-top:2px" id="liveWindDir">&mdash;</div>
-          <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-top:2px" id="liveGust"></div>
-        </div>
-      </div>
-      <div class="override-row">
-        <div class="input-group"><label>Sea State</label>
-          <select id="inputSeaState">
-            <option value="">Auto</option><option value="Calm">Calm</option><option value="Smooth">Smooth</option>
-            <option value="Slight">Slight</option><option value="Moderate">Moderate</option><option value="Rough">Rough</option>
-            <option value="Very Rough">Very Rough</option><option value="High">High</option>
-          </select>
-        </div>
-        <div class="input-group"><label>Wind Override (kts)</label>
-          <input type="number" id="inputWindOverride" min="0" max="100" step="0.1" placeholder="Leave blank">
+        <div class="wind-data">
+          <div class="wind-speed-row">
+            <div>
+              <div class="val" id="liveWind">&mdash; <small>kts</small></div>
+              <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-top:2px" id="liveWindDir">&mdash;</div>
+              <div style="font-size:11px;color:var(--tn-pale, #c5e4f3);margin-top:2px" id="liveGust"></div>
+            </div>
+            <div class="wind-overrides">
+              <div class="input-group"><label>Override (kts)</label>
+                <input type="number" id="inputWindOverride" min="0" max="100" step="0.1" placeholder="Live">
+              </div>
+              <div class="input-group"><label>Sea State</label>
+                <select id="inputSeaState">
+                  <option value="">Auto</option><option value="Calm">Calm</option><option value="Smooth">Smooth</option>
+                  <option value="Slight">Slight</option><option value="Moderate">Moderate</option><option value="Rough">Rough</option>
+                  <option value="Very Rough">Very Rough</option><option value="High">High</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
