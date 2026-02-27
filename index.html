@@ -283,6 +283,19 @@
     transform: translate(-50%, -50%);
   }
 
+  /* ── Forecast ── */
+  .forecast-row { display:flex; gap:0; margin-top:8px; }
+  .fc-item {
+    flex:1; text-align:center; padding:8px 4px;
+    border-right:1px solid var(--tn-steel, #1e4d7a);
+  }
+  .fc-item:last-child { border-right:none; }
+  .fc-time { font-size:11px; font-weight:600; color:var(--tn-gold, #d4a843); margin-bottom:4px; }
+  .fc-icon { font-size:22px; margin-bottom:4px; }
+  .fc-temp { font-size:14px; font-weight:600; color:var(--tn-white, #f0f7fb); }
+  .fc-wind { font-size:10px; color:var(--tn-pale, #c5e4f3); margin-top:2px; }
+  .fc-desc { font-size:9px; color:var(--tn-pale, #c5e4f3); margin-top:2px; }
+
   .override-row {
     display:flex; gap:10px; margin-top:10px; padding-top:10px;
     border-top:1px solid var(--tn-steel, #1e4d7a);
@@ -779,6 +792,14 @@
       </div>
       <div class="wx-status" id="wxStatus">Waiting for GPS fix...</div>
     </div>
+    <div class="live-card full">
+      <div class="lbl">3-Hour Forecast</div>
+      <div class="forecast-row" id="forecastRow">
+        <div class="fc-item"><div class="fc-time">&mdash;</div><div class="fc-icon">&mdash;</div><div class="fc-temp">&mdash;</div><div class="fc-wind">&mdash;</div></div>
+        <div class="fc-item"><div class="fc-time">&mdash;</div><div class="fc-icon">&mdash;</div><div class="fc-temp">&mdash;</div><div class="fc-wind">&mdash;</div></div>
+        <div class="fc-item"><div class="fc-time">&mdash;</div><div class="fc-icon">&mdash;</div><div class="fc-temp">&mdash;</div><div class="fc-wind">&mdash;</div></div>
+      </div>
+    </div>
   </div>
 
   <div class="sbox">
@@ -846,7 +867,7 @@
       <input type="text" id="saveFilename" class="fname-input" placeholder="helmlog_2026-01-15_1430">
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <button class="btn btn-ocean btn-sm" onclick="saveToJSON()">⬇ Download JSON</button>
+      <button class="btn btn-ocean btn-sm" onclick="saveToJSON()">⬇ JSON Export</button>
       <div class="filewrap"><button class="btn btn-outline btn-sm" onclick="this.nextElementSibling.click()">⬆ Load JSON</button><input type="file" accept=".json,.JSON,application/json" onchange="loadFromJSON(event)"></div>
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📄 Export CSV</button>
     </div>
@@ -1828,7 +1849,7 @@ function updateLiveDisplay() {
 // ── Weather ──
 function fetchWeather(lat, lng) {
   document.getElementById('wxStatus').textContent = 'Fetching...';
-  var url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&current=temperature_2m,relative_humidity_2m,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kn&temperature_unit=fahrenheit&timezone=auto';
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lng+'&current=temperature_2m,relative_humidity_2m,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_hours=6&wind_speed_unit=kn&temperature_unit=fahrenheit&timezone=auto';
   fetch(url).then(function(r){return r.json()}).then(function(data) {
     if (!data.current) return;
     var c = data.current;
@@ -1851,6 +1872,34 @@ function fetchWeather(lat, lng) {
     document.getElementById('wxHumid').textContent = liveWeather.humidity + '%';
     document.getElementById('wxPressure').textContent = liveWeather.pressure + ' mb';
     document.getElementById('wxStatus').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) + ' \u2022 ' + lat.toFixed(2) + ', ' + lng.toFixed(2);
+    if (data.hourly && data.hourly.time) {
+      var now = new Date();
+      var nowH = now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2)+'-'+('0'+now.getDate()).slice(-2)+'T'+('0'+now.getHours()).slice(-2)+':00';
+      var startIdx = 0;
+      for (var fi=0; fi<data.hourly.time.length; fi++) { if (data.hourly.time[fi] > nowH) { startIdx = fi; break; } }
+      var container = document.getElementById('forecastRow');
+      container.innerHTML = '';
+      for (var fj=0; fj<3; fj++) {
+        var idx = startIdx + fj;
+        if (idx >= data.hourly.time.length) break;
+        var fTime = new Date(data.hourly.time[idx]);
+        var fHr = fTime.getHours();
+        var ampm = fHr >= 12 ? 'PM' : 'AM';
+        var hr12 = fHr % 12 || 12;
+        var fwx = wxCode(data.hourly.weather_code[idx]);
+        var fWind = Math.round(data.hourly.wind_speed_10m[idx]);
+        var fGust = data.hourly.wind_gusts_10m ? Math.round(data.hourly.wind_gusts_10m[idx]) : null;
+        var fDir = degToCompass(data.hourly.wind_direction_10m[idx]);
+        var item = document.createElement('div');
+        item.className = 'fc-item';
+        item.innerHTML = '<div class="fc-time">'+hr12+' '+ampm+'</div>'
+          +'<div class="fc-icon">'+fwx.icon+'</div>'
+          +'<div class="fc-temp">'+Math.round(data.hourly.temperature_2m[idx])+'\u00b0F</div>'
+          +'<div class="fc-wind">'+fWind+' kts '+fDir+(fGust?' G'+fGust:'')+'</div>'
+          +'<div class="fc-desc">'+fwx.desc+'</div>';
+        container.appendChild(item);
+      }
+    }
   }).catch(function(){ document.getElementById('wxStatus').textContent = 'Weather fetch failed'; });
 }
 function getCurrentWeather() {
@@ -1997,10 +2046,11 @@ function saveLS(){try{localStorage.setItem('helmlog_data',JSON.stringify(trackDa
 function loadLS(){try{var d=localStorage.getItem('helmlog_data');if(d)trackData=JSON.parse(d);}catch(e){}}
 function getDefaultFilename(){var d=new Date();return 'helmlog_'+d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+'_'+('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2);}
 function getSaveFilename(ext){var el=document.getElementById('saveFilename');if(!el.value.trim())el.value=getDefaultFilename();var n=el.value.trim();if(n.endsWith('.json')||n.endsWith('.csv'))n=n.replace(/\.(json|csv)$/,'');return n+ext;}
-function saveToJSON(){var fn=getSaveFilename('.json');var b=new Blob([JSON.stringify(trackData,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=fn;a.click();URL.revokeObjectURL(u);showToast('Saved: '+fn);}
+function saveToJSON(){var fn=getSaveFilename('.json');var b=new Blob([JSON.stringify(trackData,null,2)],{type:'application/json'});var file=new File([b],fn,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:fn}).then(function(){showToast('Exported: '+fn);}).catch(function(e){if(e.name!=='AbortError')fallbackDownload(b,fn);});}else{fallbackDownload(b,fn);}}
+function fallbackDownload(b,fn){var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=fn;a.click();URL.revokeObjectURL(u);showToast('Saved: '+fn);}
 function loadFromJSON(ev){var f=ev.target.files[0];if(!f){showToast('No file selected');return;}showToast('Reading: '+f.name);var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(d.entries){trackData=d;saveLS();showToast('Loaded '+d.entries.length+' entries');renderLog();updateStats();if(map)renderMap();}else{showToast('Invalid: no entries found');}}catch(er){showToast('Parse error: '+er.message);}};r.onerror=function(){showToast('File read error');};r.readAsText(f);ev.target.value='';}
 function csvEsc(v){var s=v==null?'':String(v);if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)return '"'+s.replace(/"/g,'""')+'"';return s;}
-function exportCSV(){if(!trackData.entries.length){showToast('No data');return;}var hdr=['Timestamp','Type','Name','Lat','Lng','Speed (kts)','Heading','Wind (kts)','Wind Dir','Wind Dir Label','Gusts (kts)','Conditions','Temp (F)','Humidity (%)','Pressure (mb)','Sea State','Notes'];var csv=hdr.join(',')+String.fromCharCode(10);for(var i=0;i<trackData.entries.length;i++){var e=trackData.entries[i],w=e.weather||{};var row=[e.timestamp,e.type,e.name||'',e.position?e.position.lat:'',e.position?e.position.lng:'',e.speed!=null?e.speed:'',e.heading!=null?e.heading:'',w.windSpeed!=null?w.windSpeed:'',w.windDirection!=null?Math.round(w.windDirection):'',w.windDirLabel||'',w.gusts!=null?w.gusts:'',w.conditions||'',w.temp!=null?w.temp:'',w.humidity!=null?w.humidity:'',w.pressure!=null?w.pressure:'',w.seaState||'',e.notes||''];csv+=row.map(csvEsc).join(',')+String.fromCharCode(10);}var fn=getSaveFilename('.csv');var b=new Blob([csv],{type:'text/csv'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=fn;a.click();URL.revokeObjectURL(u);showToast('Exported: '+fn);}
+function exportCSV(){if(!trackData.entries.length){showToast('No data');return;}var hdr=['Timestamp','Type','Name','Lat','Lng','Speed (kts)','Heading','Wind (kts)','Wind Dir','Wind Dir Label','Gusts (kts)','Conditions','Temp (F)','Humidity (%)','Pressure (mb)','Sea State','Notes'];var csv=hdr.join(',')+String.fromCharCode(10);for(var i=0;i<trackData.entries.length;i++){var e=trackData.entries[i],w=e.weather||{};var row=[e.timestamp,e.type,e.name||'',e.position?e.position.lat:'',e.position?e.position.lng:'',e.speed!=null?e.speed:'',e.heading!=null?e.heading:'',w.windSpeed!=null?w.windSpeed:'',w.windDirection!=null?Math.round(w.windDirection):'',w.windDirLabel||'',w.gusts!=null?w.gusts:'',w.conditions||'',w.temp!=null?w.temp:'',w.humidity!=null?w.humidity:'',w.pressure!=null?w.pressure:'',w.seaState||'',e.notes||''];csv+=row.map(csvEsc).join(',')+String.fromCharCode(10);}var fn=getSaveFilename('.csv');var b=new Blob([csv],{type:'text/csv'});var file=new File([b],fn,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:fn}).then(function(){showToast('Exported: '+fn);}).catch(function(e){if(e.name!=='AbortError')fallbackDownload(b,fn);});}else{fallbackDownload(b,fn);}}
 function clearAllData(){if(!confirm('Clear all data?'))return;if(isTracking)stopTracking();trackData={tripName:'',startTime:null,entries:[]};saveLS();renderLog();updateStats();if(map)renderMap();showToast('Cleared');}
 
 // ── Learn: Accordion ──
